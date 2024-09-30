@@ -1,34 +1,63 @@
 import nibabel as nib
 import numpy as np
 import matplotlib.pyplot as plt
+import os
+import cv2
 
-# Step 1: Load the NIfTI file
-nii_file = nib.load('path_to_your_file.nii')  # replace with your .nii file path
-nii_data = nii_file.get_fdata()
+ROOT_PATH = 'datasets/MICCAI_BraTS_2019_Data_Training'
 
-# Step 2: Define function to normalize slice to [0, 255] range
+OUTPUT_PATH = 'datasets/MICCAI_BraTS_2019_Data_Training/HGG_PNG'
+
+os.makedirs(OUTPUT_PATH, exist_ok=True)
+
 def normalize_slice(slice_data):
     slice_normalized = (slice_data - np.min(slice_data)) / (np.max(slice_data) - np.min(slice_data)) * 255
     return slice_normalized.astype(np.uint8)
 
-# Step 3: Select middle slices for each view
-slice_index_axial = nii_data.shape[2] // 2    # Middle slice along Z-axis for Axial view
-slice_index_coronal = nii_data.shape[1] // 2  # Middle slice along Y-axis for Coronal view
-slice_index_sagittal = nii_data.shape[0] // 2 # Middle slice along X-axis for Sagittal view
+for folder_name in os.listdir(os.path.join(ROOT_PATH, 'HGG')):
 
-# Step 4: Extract slices
-axial_slice = nii_data[:, :, slice_index_axial]    # Axial (Z-axis slice)
-coronal_slice = nii_data[:, slice_index_coronal, :] # Coronal (Y-axis slice)
-sagittal_slice = nii_data[slice_index_sagittal, :, :] # Sagittal (X-axis slice)
+    nii_file = nib.load(os.path.join(ROOT_PATH, 'HGG', folder_name, f'{folder_name}_t1ce.nii'))
+    nii_data = nii_file.get_fdata()
 
-# Step 5: Normalize slices
-axial_slice_normalized = normalize_slice(axial_slice)
-coronal_slice_normalized = normalize_slice(coronal_slice)
-sagittal_slice_normalized = normalize_slice(sagittal_slice)
+    os.makedirs(os.path.join(OUTPUT_PATH, folder_name), exist_ok=True)
+    os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'axial'), exist_ok=True)
+    os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'coronal'), exist_ok=True)
+    os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'sagittal'), exist_ok=True)
 
-# Step 6: Save the slices as images
-plt.imsave('axial_view.png', axial_slice_normalized, cmap='gray')
-plt.imsave('coronal_view.png', coronal_slice_normalized, cmap='gray')
-plt.imsave('sagittal_view.png', sagittal_slice_normalized, cmap='gray')
+    j = 0
 
-print("Images saved successfully!")
+    for i in range(nii_data.shape[2]):
+        axial_slice = nii_data[:, :, i]
+        axial_slice_normalized = normalize_slice(axial_slice)
+
+        axial_slice_normalized_resized = cv2.resize(axial_slice_normalized, (640, 640))
+
+        if np.mean(axial_slice_normalized_resized) != 0:
+            plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'axial/axial_slice_{j}.png'), axial_slice_normalized_resized, cmap='gray')
+            j += 1
+
+    j = 0
+
+    for i in range(nii_data.shape[1]):
+        coronal_slice = nii_data[:, i, :]
+        coronal_slice_normalized = normalize_slice(coronal_slice)
+
+        coronal_slice_normalized_resized = cv2.resize(coronal_slice_normalized, (640, 640))
+
+        if np.mean(coronal_slice_normalized_resized) != 0:
+            plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'coronal/coronal_slice_{j}.png'), coronal_slice_normalized_resized, cmap='gray')
+            j += 1
+
+    j = 0
+
+    for i in range(nii_data.shape[0]):
+        sagittal_slice = nii_data[i, :, :]
+        sagittal_slice_normalized = normalize_slice(sagittal_slice)
+
+        sagittal_slice_normalized_resized = cv2.resize(sagittal_slice_normalized, (640, 640))
+
+        if np.mean(sagittal_slice_normalized_resized) != 0:
+            plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'sagittal/sagittal_slice_{j}.png'), sagittal_slice_normalized_resized, cmap='gray')
+            j += 1
+
+print("All slices saved successfully!")
