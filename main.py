@@ -31,6 +31,10 @@ for image_path in image_paths:
     image = np.where(image < 25, 0, image)
 
     image_equalized = cv2.equalizeHist(image)
+
+    cv2.imshow(f'image_equalized', image_equalized)
+
+    cv2.waitKey(0)  
     
     # Binarization - scipy
     # neighborhood_size = 7
@@ -124,7 +128,7 @@ for i, contour in enumerate(contours):
     print(contours[i].shape)
 
 
-# cv2.imshow(f'result', output_image)
+# cv2.imshow(f'result', max_matrix_maximum)
 
 # cv2.waitKey(0)  
 

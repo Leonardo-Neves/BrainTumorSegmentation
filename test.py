@@ -1,24 +1,36 @@
 import numpy as np
 import scipy.ndimage as ndimage
 import matplotlib.pyplot as plt
+import cv2
+import nibabel as nib
 
-# Create or load a grayscale image (example random image)
-image = np.random.random((100, 100))
+from utils.digital_image_processing import DigitalImageProcessing
 
-neighborhood_size = 5
-local_max = ndimage.maximum_filter(image, size=neighborhood_size) == image
+dip = DigitalImageProcessing()
 
-background = (image == 0)
-eroded_background = ndimage.binary_erosion(background, structure=np.ones((3, 3)))
-detected_peaks = local_max ^ eroded_background
 
-# Visualize the result
-plt.subplot(1, 2, 1)
-plt.imshow(image, cmap='gray')
-plt.title('Original Image')
 
-plt.subplot(1, 2, 2)
-plt.imshow(detected_peaks, cmap='gray')
-plt.title('Regional Maxima')
 
-plt.show()
+image_path = r"C:\Users\leosn\Desktop\PIM\datasets\MICCAI_BraTS_2019_Data_Training\HGG\BraTS19_2013_2_1\BraTS19_2013_2_1_t1ce.nii"
+
+nii_file = nib.load(image_path)
+nii_data = nii_file.get_fdata()
+
+j = 0
+
+for i in range(nii_data.shape[2]):
+    axial_slice = nii_data[:, :, i]
+
+    # axial_slice = (axial_slice / np.max(axial_slice)) * 255
+
+    axial_slice = cv2.normalize(axial_slice, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+
+    if np.mean(axial_slice) != 0:
+
+        axial_slice_resized = cv2.resize(axial_slice, (640, 640))
+
+        cv2.imshow(f'image {j}', cv2.equalizeHist(axial_slice_resized))
+
+        cv2.waitKey(0) 
+
+        j += 1
