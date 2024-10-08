@@ -5,6 +5,7 @@ from tqdm import tqdm
 import os
 import cv2
 import warnings
+import concurrent.futures as futures
 
 warnings.filterwarnings("ignore")
 
@@ -58,7 +59,10 @@ def preProcessingPhaseSegmentationMask(image):
 
     return np.where(image_8bits > 0, 255, 0)
 
-for folder_name in tqdm(os.listdir(ROOT_PATH)):
+
+def threadProcessment(folder_name):
+    global ROOT_PATH
+    global OUTPUT_PATH
 
     nii_file = nib.load(os.path.join(ROOT_PATH, folder_name, f'{folder_name}_t1ce.nii'))
     nii_data = nii_file.get_fdata()
@@ -120,5 +124,20 @@ for folder_name in tqdm(os.listdir(ROOT_PATH)):
             plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'sagittal/slices/sagittal_slice_{j}.png'), sagittal_slice_normalized, cmap='gray')
             plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'sagittal/slices_segmentation/sagittal_slice_{j}.png'), sagittal_slice_segmentation_normalized, cmap='gray')
             j += 1
+
+    return 1
+
+counter = 0
+
+with futures.ThreadPoolExecutor(8) as executor:
+            
+    future_to_get_bv = {executor.submit(threadProcessment, folder_name): folder_name for folder_name in os.listdir(ROOT_PATH)}    
+
+    for future in futures.as_completed(future_to_get_bv):
+        number = future.result()
+
+        counter += number
+
+        print("Processed folders:", counter)
 
 print("All slices saved successfully!")
