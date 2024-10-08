@@ -102,7 +102,7 @@ for folder_name in tqdm(os.listdir(ROOT_PATH)):
         coronal_slice_normalized = preProcessingPhase(coronal_slice)
         coronal_slice_segmentation_normalized = preProcessingPhaseSegmentationMask(coronal_slice_segmentation)
 
-        if np.mean(coronal_slice_normalized) != 0:
+        if np.mean(coronal_slice_segmentation_normalized) != 0:
             plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'coronal/slices/coronal_slice_{j}.png'), coronal_slice_normalized, cmap='gray')
             plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'coronal/slices_segmentation/coronal_slice_{j}.png'), coronal_slice_segmentation_normalized, cmap='gray')
             j += 1
@@ -116,7 +116,7 @@ for folder_name in tqdm(os.listdir(ROOT_PATH)):
         sagittal_slice_normalized = preProcessingPhase(sagittal_slice)
         sagittal_slice_segmentation_normalized = preProcessingPhaseSegmentationMask(sagittal_slice_segmentation)
 
-        if np.mean(sagittal_slice_normalized) != 0:
+        if np.mean(sagittal_slice_segmentation_normalized) != 0:
             plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'sagittal/slices/sagittal_slice_{j}.png'), sagittal_slice_normalized, cmap='gray')
             plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'sagittal/slices_segmentation/sagittal_slice_{j}.png'), sagittal_slice_segmentation_normalized, cmap='gray')
             j += 1
