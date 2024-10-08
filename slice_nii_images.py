@@ -1,8 +1,12 @@
 import nibabel as nib
 import numpy as np
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 import os
 import cv2
+import warnings
+
+warnings.filterwarnings("ignore")
 
 ROOT_PATH = 'datasets/MICCAI_BraTS_2020_Data_Training/BraTS2020_TrainingData/MICCAI_BraTS2020_TrainingData'
 
@@ -54,7 +58,7 @@ def preProcessingPhaseSegmentationMask(image):
 
     return np.where(image_8bits > 0, 255, 0)
 
-for folder_name in os.listdir(ROOT_PATH):
+for folder_name in tqdm(os.listdir(ROOT_PATH)):
 
     nii_file = nib.load(os.path.join(ROOT_PATH, folder_name, f'{folder_name}_t1ce.nii'))
     nii_data = nii_file.get_fdata()
@@ -79,8 +83,10 @@ for folder_name in os.listdir(ROOT_PATH):
 
     for i in range(nii_data.shape[2]):
         axial_slice = nii_data[:, :, i]
+        axial_slice_segmentation = nii_segmentation_data[:, :, i]
+
         axial_slice_normalized = preProcessingPhase(axial_slice)
-        axial_slice_segmentation_normalized = preProcessingPhaseSegmentationMask(axial_slice)
+        axial_slice_segmentation_normalized = preProcessingPhaseSegmentationMask(axial_slice_segmentation)
 
         if np.mean(axial_slice_segmentation_normalized) != 0:
             plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'axial/slices/axial_slice_{j}.png'), axial_slice_normalized, cmap='gray')
@@ -91,8 +97,10 @@ for folder_name in os.listdir(ROOT_PATH):
 
     for i in range(nii_data.shape[1]):
         coronal_slice = nii_data[:, i, :]
+        coronal_slice_segmentation = nii_segmentation_data[:, i, :]
+
         coronal_slice_normalized = preProcessingPhase(coronal_slice)
-        coronal_slice_segmentation_normalized = preProcessingPhaseSegmentationMask(coronal_slice)
+        coronal_slice_segmentation_normalized = preProcessingPhaseSegmentationMask(coronal_slice_segmentation)
 
         if np.mean(coronal_slice_normalized) != 0:
             plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'coronal/slices/coronal_slice_{j}.png'), coronal_slice_normalized, cmap='gray')
@@ -103,8 +111,10 @@ for folder_name in os.listdir(ROOT_PATH):
 
     for i in range(nii_data.shape[0]):
         sagittal_slice = nii_data[i, :, :]
+        sagittal_slice_segmentation = nii_segmentation_data[i, :, :]
+
         sagittal_slice_normalized = preProcessingPhase(sagittal_slice)
-        sagittal_slice_segmentation_normalized = preProcessingPhaseSegmentationMask(sagittal_slice)
+        sagittal_slice_segmentation_normalized = preProcessingPhaseSegmentationMask(sagittal_slice_segmentation)
 
         if np.mean(sagittal_slice_normalized) != 0:
             plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'sagittal/slices/sagittal_slice_{j}.png'), sagittal_slice_normalized, cmap='gray')
