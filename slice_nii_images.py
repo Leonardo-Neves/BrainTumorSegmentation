@@ -18,7 +18,7 @@ os.makedirs(OUTPUT_PATH, exist_ok=True)
 def preProcessingPhase(image):
     # Normalizing the image to 8 bits and rezising it
     image_8bits = cv2.normalize(image, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-    image_8bits = cv2.resize(image_8bits, (640, 640))
+    
 
     # Selecting only the region of the brain
     mask = np.where(image_8bits == 0, 0, 1)
@@ -50,6 +50,8 @@ def preProcessingPhase(image):
                                     [image[i+1, j-1], image[i+1, j],   image[i+1, j+1]]])
 
             filtered_image_without_pepper_salt[i, j]= medianFilter(neighborhood)
+
+    filtered_image_without_pepper_salt = cv2.resize(filtered_image_without_pepper_salt, (640, 640))
 
     return filtered_image_without_pepper_salt
 
@@ -84,18 +86,20 @@ def threadProcessment(folder_name):
     os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'sagittal', 'slices_segmentation'), exist_ok=True)
 
     j = 0
-
+    
     for i in range(nii_data.shape[2]):
         axial_slice = nii_data[:, :, i]
         axial_slice_segmentation = nii_segmentation_data[:, :, i]
+        
+        if np.mean(axial_slice) != 0:
 
-        axial_slice_normalized = preProcessingPhase(axial_slice)
-        axial_slice_segmentation_normalized = preProcessingPhaseSegmentationMask(axial_slice_segmentation)
+            axial_slice_normalized = preProcessingPhase(axial_slice)
+            axial_slice_segmentation_normalized = preProcessingPhaseSegmentationMask(axial_slice_segmentation)
 
-        if np.mean(axial_slice_segmentation_normalized) != 0:
-            plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'axial/slices/axial_slice_{j}.png'), axial_slice_normalized, cmap='gray')
-            plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'axial/slices_segmentation/axial_slice_{j}.png'), axial_slice_segmentation_normalized, cmap='gray')
-            j += 1
+            if np.mean(axial_slice_segmentation_normalized) != 0:
+                plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'axial/slices/axial_slice_{j}.png'), axial_slice_normalized, cmap='gray')
+                plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'axial/slices_segmentation/axial_slice_{j}.png'), axial_slice_segmentation_normalized, cmap='gray')
+                j += 1
 
     j = 0
 
@@ -103,33 +107,37 @@ def threadProcessment(folder_name):
         coronal_slice = nii_data[:, i, :]
         coronal_slice_segmentation = nii_segmentation_data[:, i, :]
 
-        coronal_slice_normalized = preProcessingPhase(coronal_slice)
-        coronal_slice_segmentation_normalized = preProcessingPhaseSegmentationMask(coronal_slice_segmentation)
+        if np.mean(coronal_slice) != 0:
 
-        if np.mean(coronal_slice_segmentation_normalized) != 0:
-            plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'coronal/slices/coronal_slice_{j}.png'), coronal_slice_normalized, cmap='gray')
-            plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'coronal/slices_segmentation/coronal_slice_{j}.png'), coronal_slice_segmentation_normalized, cmap='gray')
-            j += 1
+            coronal_slice_normalized = preProcessingPhase(coronal_slice)
+            coronal_slice_segmentation_normalized = preProcessingPhaseSegmentationMask(coronal_slice_segmentation)
+
+            if np.mean(coronal_slice_segmentation_normalized) != 0:
+                plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'coronal/slices/coronal_slice_{j}.png'), coronal_slice_normalized, cmap='gray')
+                plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'coronal/slices_segmentation/coronal_slice_{j}.png'), coronal_slice_segmentation_normalized, cmap='gray')
+                j += 1
 
     j = 0
-
+    
     for i in range(nii_data.shape[0]):
         sagittal_slice = nii_data[i, :, :]
         sagittal_slice_segmentation = nii_segmentation_data[i, :, :]
 
-        sagittal_slice_normalized = preProcessingPhase(sagittal_slice)
-        sagittal_slice_segmentation_normalized = preProcessingPhaseSegmentationMask(sagittal_slice_segmentation)
+        if np.mean(sagittal_slice) != 0:
 
-        if np.mean(sagittal_slice_segmentation_normalized) != 0:
-            plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'sagittal/slices/sagittal_slice_{j}.png'), sagittal_slice_normalized, cmap='gray')
-            plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'sagittal/slices_segmentation/sagittal_slice_{j}.png'), sagittal_slice_segmentation_normalized, cmap='gray')
-            j += 1
+            sagittal_slice_normalized = preProcessingPhase(sagittal_slice)
+            sagittal_slice_segmentation_normalized = preProcessingPhaseSegmentationMask(sagittal_slice_segmentation)
 
+            if np.mean(sagittal_slice_segmentation_normalized) != 0:
+                plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'sagittal/slices/sagittal_slice_{j}.png'), sagittal_slice_normalized, cmap='gray')
+                plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'sagittal/slices_segmentation/sagittal_slice_{j}.png'), sagittal_slice_segmentation_normalized, cmap='gray')
+                j += 1
+    
     return 1
 
 counter = 0
 
-with futures.ThreadPoolExecutor(8) as executor:
+with futures.ThreadPoolExecutor(30) as executor:
             
     future_to_get_bv = {executor.submit(threadProcessment, folder_name): folder_name for folder_name in os.listdir(ROOT_PATH)}    
 
