@@ -63,75 +63,79 @@ def preProcessingPhaseSegmentationMask(image):
 
 
 def threadProcessment(folder_name):
-    global ROOT_PATH
-    global OUTPUT_PATH
+    print(folder_name)
+    try:
+        global ROOT_PATH
+        global OUTPUT_PATH
 
-    nii_file = nib.load(os.path.join(ROOT_PATH, folder_name, f'{folder_name}_t1ce.nii'))
-    nii_data = nii_file.get_fdata()
+        nii_file = nib.load(os.path.join(ROOT_PATH, folder_name, f'{folder_name}_t1ce.nii'))
+        nii_data = nii_file.get_fdata()
 
-    nii_segmentation_file = nib.load(os.path.join(ROOT_PATH, folder_name, f'{folder_name}_seg.nii'))
-    nii_segmentation_data = nii_segmentation_file.get_fdata()
+        nii_segmentation_file = nib.load(os.path.join(ROOT_PATH, folder_name, f'{folder_name}_seg.nii'))
+        nii_segmentation_data = nii_segmentation_file.get_fdata()
 
-    os.makedirs(os.path.join(OUTPUT_PATH, folder_name), exist_ok=True)
-    os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'axial'), exist_ok=True)
-    os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'axial', 'slices'), exist_ok=True)
-    os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'axial', 'slices_segmentation'), exist_ok=True)
+        os.makedirs(os.path.join(OUTPUT_PATH, folder_name), exist_ok=True)
+        os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'axial'), exist_ok=True)
+        os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'axial', 'slices'), exist_ok=True)
+        os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'axial', 'slices_segmentation'), exist_ok=True)
 
-    os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'coronal'), exist_ok=True)
-    os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'coronal', 'slices'), exist_ok=True)
-    os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'coronal', 'slices_segmentation'), exist_ok=True)
+        os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'coronal'), exist_ok=True)
+        os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'coronal', 'slices'), exist_ok=True)
+        os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'coronal', 'slices_segmentation'), exist_ok=True)
 
-    os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'sagittal'), exist_ok=True)
-    os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'sagittal', 'slices'), exist_ok=True)
-    os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'sagittal', 'slices_segmentation'), exist_ok=True)
+        os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'sagittal'), exist_ok=True)
+        os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'sagittal', 'slices'), exist_ok=True)
+        os.makedirs(os.path.join(OUTPUT_PATH, folder_name, 'sagittal', 'slices_segmentation'), exist_ok=True)
 
-    j = 0
-    
-    for i in range(nii_data.shape[2]):
-        axial_slice = nii_data[:, :, i]
-        axial_slice_segmentation = nii_segmentation_data[:, :, i]
+        j = 0
         
-        if np.mean(axial_slice) != 0:
-
-            axial_slice_normalized = preProcessingPhase(axial_slice)
+        for i in range(nii_data.shape[2]):
+            axial_slice = nii_data[:, :, i]
+            axial_slice_segmentation = nii_segmentation_data[:, :, i]
+            
             axial_slice_segmentation_normalized = preProcessingPhaseSegmentationMask(axial_slice_segmentation)
 
             if np.mean(axial_slice_segmentation_normalized) != 0:
-                plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'axial/slices/axial_slice_{j}.png'), axial_slice_normalized, cmap='gray')
-                plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'axial/slices_segmentation/axial_slice_{j}.png'), axial_slice_segmentation_normalized, cmap='gray')
+        
+                axial_slice_normalized = preProcessingPhase(axial_slice)
+
+                plt.imsave(os.path.join(OUTPUT_PATH, folder_name, 'axial', 'slices', f'{j}.png'), axial_slice_normalized, cmap='gray')
+                plt.imsave(os.path.join(OUTPUT_PATH, folder_name, 'axial', 'slices_segmentation', f'{j}.png'), axial_slice_segmentation_normalized, cmap='gray')
                 j += 1
 
-    j = 0
+        j = 0
 
-    for i in range(nii_data.shape[1]):
-        coronal_slice = nii_data[:, i, :]
-        coronal_slice_segmentation = nii_segmentation_data[:, i, :]
+        for i in range(nii_data.shape[1]):
+            coronal_slice = nii_data[:, i, :]
+            coronal_slice_segmentation = nii_segmentation_data[:, i, :]
 
-        if np.mean(coronal_slice) != 0:
-
-            coronal_slice_normalized = preProcessingPhase(coronal_slice)
             coronal_slice_segmentation_normalized = preProcessingPhaseSegmentationMask(coronal_slice_segmentation)
 
             if np.mean(coronal_slice_segmentation_normalized) != 0:
-                plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'coronal/slices/coronal_slice_{j}.png'), coronal_slice_normalized, cmap='gray')
-                plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'coronal/slices_segmentation/coronal_slice_{j}.png'), coronal_slice_segmentation_normalized, cmap='gray')
+
+                coronal_slice_normalized = preProcessingPhase(coronal_slice)
+
+                plt.imsave(os.path.join(OUTPUT_PATH, folder_name, 'coronal', 'slices', f'{j}.png'), coronal_slice_normalized, cmap='gray')
+                plt.imsave(os.path.join(OUTPUT_PATH, folder_name, 'coronal', 'slices_segmentation', f'{j}.png'), coronal_slice_segmentation_normalized, cmap='gray')
                 j += 1
 
-    j = 0
-    
-    for i in range(nii_data.shape[0]):
-        sagittal_slice = nii_data[i, :, :]
-        sagittal_slice_segmentation = nii_segmentation_data[i, :, :]
+        j = 0
+        
+        for i in range(nii_data.shape[0]):
+            sagittal_slice = nii_data[i, :, :]
+            sagittal_slice_segmentation = nii_segmentation_data[i, :, :]
 
-        if np.mean(sagittal_slice) != 0:
-
-            sagittal_slice_normalized = preProcessingPhase(sagittal_slice)
             sagittal_slice_segmentation_normalized = preProcessingPhaseSegmentationMask(sagittal_slice_segmentation)
 
             if np.mean(sagittal_slice_segmentation_normalized) != 0:
-                plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'sagittal/slices/sagittal_slice_{j}.png'), sagittal_slice_normalized, cmap='gray')
-                plt.imsave(os.path.join(OUTPUT_PATH, folder_name, f'sagittal/slices_segmentation/sagittal_slice_{j}.png'), sagittal_slice_segmentation_normalized, cmap='gray')
+
+                sagittal_slice_normalized = preProcessingPhase(sagittal_slice)
+            
+                plt.imsave(os.path.join(OUTPUT_PATH, folder_name, 'sagittal', 'slices', f'{j}.png'), sagittal_slice_normalized, cmap='gray')
+                plt.imsave(os.path.join(OUTPUT_PATH, folder_name, 'sagittal', 'slices_segmentation', f'{j}.png'), sagittal_slice_segmentation_normalized, cmap='gray')
                 j += 1
+    except Exception as e:
+        print(e)
     
     return 1
 
@@ -139,7 +143,7 @@ counter = 0
 
 with futures.ThreadPoolExecutor(30) as executor:
             
-    future_to_get_bv = {executor.submit(threadProcessment, folder_name): folder_name for folder_name in os.listdir(ROOT_PATH)}    
+    future_to_get_bv = {executor.submit(threadProcessment, folder_name): folder_name for i, folder_name in enumerate(os.listdir(ROOT_PATH)) if i >= 300}    
 
     for future in futures.as_completed(future_to_get_bv):
         number = future.result()
