@@ -23,8 +23,7 @@ slices_segmentation = []
 
 for i in range(nii_data.shape[2]):
 
-    if i == 77:
-
+    if i >= 30 and i <= 112:
         axial_slice = nii_data[:, :, i]
         axial_slice_segmentation = nii_segmentation_data[:, :, i]
 
@@ -34,63 +33,35 @@ for i in range(nii_data.shape[2]):
         image_8bits_segmentation = cv2.normalize(axial_slice_segmentation, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
         image_8bits_segmentation = cv2.resize(image_8bits_segmentation, (640, 640))
 
-        slices.append(image_8bits)
-        slices_segmentation.append(image_8bits_segmentation)
+        mask_non_zero_region = np.where(image_8bits == 0, 0, 1)
+        mask_non_zero_region = cv2.normalize(mask_non_zero_region, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
-        mask = np.where(image_8bits == 0, 0, 1)
-        mask = cv2.normalize(mask, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-        non_uniform_region = cv2.bitwise_and(image_8bits, image_8bits, mask=mask)
-        pixels = non_uniform_region[mask == 255]
-
-        # unique, counts = np.unique(pixels, return_counts=True)
-        # plt.bar(unique, counts)
-        # plt.show()
-
-        cv2.imshow('image_8bits', image_8bits)
-        cv2.imshow('image_8bits_segmentation', image_8bits_segmentation)
+        non_uniform_region = cv2.bitwise_and(image_8bits, image_8bits, mask=mask_non_zero_region)
+        pixels = non_uniform_region[mask_non_zero_region == 255]
 
         threshold = round(dip.otsuThresholding(pixels))
 
         mask = np.where(image_8bits >= threshold, 255, 0)
         mask = cv2.normalize(mask, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
-        cv2.imshow('mask', mask)
-        
-        cv2.waitKey(0)  
+        mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
 
-# max_matrix_maximum = np.maximum.reduce(slices)
-# max_matrix_minimum = np.minimum.reduce(slices)
+        slices.append(mask)
 
-# slices_array = np.array(slices)
-# mean_matrix = np.mean(slices_array, axis=0).astype(np.uint8)
+mask_mean = np.mean(slices, axis=0).astype(np.uint8)
 
-# sliced_image = np.zeros_like(max_matrix_maximum)
-# sliced_image[(max_matrix_maximum <= 170) & (max_matrix_maximum > 0)] = 255
+mask_non_zero_region = np.where(mask_mean == 0, 0, 1)
+mask_non_zero_region = cv2.normalize(mask_non_zero_region, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
-# cv2.imshow('max_matrix_maximum', max_matrix_maximum)
-# cv2.imshow('sliced_image', sliced_image)
-# cv2.imshow('mean_matrix', mean_matrix)
+non_uniform_region = cv2.bitwise_and(mask_mean, mask_mean, mask=mask_non_zero_region)
+pixels = non_uniform_region[mask_non_zero_region == 255]
 
-# mask = np.where(max_matrix_maximum == 0, 0, 1)
-# mask = cv2.normalize(mask, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-# non_uniform_region = cv2.bitwise_and(max_matrix_maximum, max_matrix_maximum, mask=mask)
-# pixels = non_uniform_region[mask == 255]
+threshold = round(dip.otsuThresholding(pixels))
 
+mask_result = np.where(mask_mean >= threshold, 255, 0)
+mask_result = cv2.normalize(mask_result, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
-# hist, bins = np.histogram(pixels, 256, [0, 256])
-# cdf = hist.cumsum()
-# cdf_normalized = cdf * float(hist.max()) / cdf.max()
-# cdf_masked = np.ma.masked_equal(cdf, 0)
-# cdf_masked = (cdf_masked - cdf_masked.min()) * 255 / (cdf_masked.max() - cdf_masked.min())
-# cdf_final = np.ma.filled(cdf_masked, 0).astype('uint8')
-# image_equalized = cdf_final[max_matrix_maximum]
-
-# # unique, counts = np.unique(pixels, return_counts=True)
-# # plt.bar(unique, counts)
-# # plt.show()
-
-
-# cv2.imshow('image_equalized', image_equalized)
+cv2.imshow('result', mask_result)
 
 cv2.waitKey(0)  
 
