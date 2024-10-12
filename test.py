@@ -1,5 +1,6 @@
 import matplotlib.pyplot as plt
 import nibabel as nib
+import pandas as pd
 import numpy as np
 import cv2
 import os
@@ -89,11 +90,53 @@ def a(slices):
     non_uniform_region = cv2.bitwise_and(mask_mean, mask_mean, mask=mask_non_zero_region)
     pixels = non_uniform_region[mask_non_zero_region == 255]
 
-    threshold = round(dip.otsuThresholding(pixels))
+    # threshold = round(dip.otsuThresholding(pixels))
 
-    mask_result = np.where(mask_mean >= threshold, 255, 0)
-    # return 
-    return mask_mean, cv2.normalize(mask_result, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    # mask_result = np.where(mask_mean >= threshold, 255, 0)
+    # mask_result = cv2.normalize(mask_result, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    
+    cv2.imshow('mask_mean', mask_mean)
+
+    # Find the pick of intensity in the mean mask
+    hot_point_mask = np.where(mask_mean == np.max(mask_mean), 255, 0)
+    hot_point_mask = cv2.normalize(hot_point_mask, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+    
+    cv2.imshow('hot_point_mask', hot_point_mask)
+
+    contours, _ = cv2.findContours(hot_point_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    drawed_contours = np.zeros_like(hot_point_mask)
+    drawed_contours = cv2.cvtColor(drawed_contours, cv2.COLOR_GRAY2BGR)
+
+    centroids = []
+
+    for countour in contours:
+        M = cv2.moments(countour)
+
+        if M["m00"] != 0:
+            cX = int(M["m10"] / M["m00"])
+            cY = int(M["m01"] / M["m00"])
+        else:
+            cX, cY = 0, 0
+
+        if cX != 0 and cY != 0:
+            centroids.append([cX, cY])
+        
+    centroids_dataframe = pd.DataFrame(centroids, columns=['X', 'Y'])
+
+    mean_x = int(centroids_dataframe['X'].mean())
+    mean_y = int(centroids_dataframe['Y'].mean())
+
+
+    # cv2.drawContours(drawed_contours, [countour], -1, (255, 255, 255), -1)
+
+    # unique, counts = np.unique(pixels, return_counts=True)
+    # plt.bar(unique, counts)
+    # plt.show()
+
+    cv2.imshow('drawed_contours', drawed_contours)
+
+    cv2.waitKey(0)
 
 def b(slices, FILTER_SIZE = 7):
 
@@ -149,7 +192,7 @@ def c(slices, FILTER_SIZE = 5):
         cv2.waitKey(0)
 
 
-c(slices)
+a(slices)
 
 # mask_mean, mask_result = a(slices)
 
