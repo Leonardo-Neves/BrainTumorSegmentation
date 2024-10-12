@@ -78,7 +78,7 @@ pixels = non_uniform_region[mask_non_zero_region == 255]
 
 print('mean: ', np.mean(pixels))
 
-cv2.imshow('mask_mean', mask_mean)
+# cv2.imshow('mask_mean', mask_mean)
 
 # dip.plotImage3D(mask_mean)
 
@@ -120,7 +120,7 @@ contours_drawn = []
 
 for slice in slices:
 
-    cv2.imshow('slice', slice)
+    # cv2.imshow('slice', slice)
 
     contours_slice, _ = cv2.findContours(slice, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
@@ -158,7 +158,7 @@ for slice in slices:
     contours_drawn.append(drawed_contours)
 
 
-# Calculate the standard deviation of points between two points
+# ---------------------- Calculate the standard deviation of points between two points ----------------------
 
 contours_drawn_maximum = np.maximum.reduce(contours_drawn)
 # contours_drawn_maximum = cv2.normalize(contours_drawn_maximum, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
@@ -171,7 +171,30 @@ cv2.drawContours(contours_drawn_maximum_countour_drawn, [contours_drawn_maximum_
 # Get the position of each pixel whici is 255 intensity of the silhouette of the mask_mean
 positions = np.column_stack(np.where(contours_drawn_maximum_countour_drawn == 255))
 
+result = []
 
+mask_positions = np.zeros_like(mask_mean)
+
+for position in positions:
+    pixel_intensities = dip.pixelsIntensityImaginaryLineBetweenTwoPoints(mask_mean, [mean_centroid_x, mean_centroid_y], position)
+    pixel_intensities = [x for x in pixel_intensities if x != 0]
+    
+    mean = np.mean(pixel_intensities)
+    std = np.std(pixel_intensities)
+
+    # print(f'{position} - Mean: {np.mean(pixel_intensities)} Standard Deviation: {np.std(pixel_intensities)}', )
+
+    if mean and std:
+        mask_positions = dip.applyIntensityBelowImaginaryLineBetweenTwoPoints(mask_mean, mask_positions, 255, mean, std, [mean_centroid_x, mean_centroid_y], position)
+
+    # result.append([position[0], position[1], f'{np.mean(pixel_intensities)}'.replace('.', ','), f'{np.std(pixel_intensities)}'.replace('.', ',')])
+
+
+# result_dataframe = pd.DataFrame(result, columns=['X', 'Y', 'Mean', 'Standard Deviation'])
+
+# result_dataframe.to_csv('result.csv', index=False, sep=';')
+
+cv2.imshow('mask_positions', mask_positions)
 
 cv2.waitKey(0)
 

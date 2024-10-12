@@ -212,6 +212,26 @@ class DigitalImageProcessing:
 
         return pixels_below_line
     
+    def applyIntensityBelowImaginaryLineBetweenTwoPoints(self, image, mask, intensity, mean, std, point1, point2):
+        height, width = image.shape
+
+        x1, y1 = point1
+        y2, x2 = point2
+
+        m = (y2 - y1) / (x2 - x1)
+        b = y1 - m * x1
+
+        for x in range(width):
+            for y in range(height):
+                
+                y_line = m * x + b
+                
+                if y > y_line:
+                    if image[y, x] >= (mean + (std * 0.1)):
+                        mask[y, x] = intensity
+
+        return mask
+    
     def countoursInMask(self, mask):
         contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         return contours
