@@ -227,7 +227,7 @@ class DigitalImageProcessing:
                 y_line = m * x + b
                 
                 if y > y_line:
-                    if image[y, x] >= (mean + (std * 0.1)):
+                    if image[y, x] <= (mean - std):
                         mask[y, x] = intensity
 
         return mask
