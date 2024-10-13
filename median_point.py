@@ -158,7 +158,7 @@ for slice in slices:
     contours_drawn.append(drawed_contours)
 
 
-# ---------------------- Calculate the standard deviation of points between two points ----------------------
+# ---------------------- Calculate the standard deviation of pixels between two points ----------------------
 
 contours_drawn_maximum = np.maximum.reduce(contours_drawn)
 # contours_drawn_maximum = cv2.normalize(contours_drawn_maximum, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
@@ -168,7 +168,7 @@ contours_drawn_maximum_countours = dip.countoursInMask(contours_drawn_maximum)
 contours_drawn_maximum_countour_drawn = np.zeros_like(contours_drawn_maximum)
 cv2.drawContours(contours_drawn_maximum_countour_drawn, [contours_drawn_maximum_countours[0]], -1, 255, 1)
 
-# Get the position of each pixel whici is 255 intensity of the silhouette of the mask_mean
+# Get the position of each pixel which is 255 intensity of the silhouette of the mask_mean
 positions = np.column_stack(np.where(contours_drawn_maximum_countour_drawn == 255))
 
 result = []
