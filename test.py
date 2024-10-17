@@ -191,61 +191,33 @@ for i in range(nii_data.shape[2]):
 
         # --------------------- Sharpening with Laplacian kernel ---------------------
 
-        # padded_image = padImage(image_8bits)
+        padded_image = padImage(image_8bits)
 
-        # H_u_v = butterworthHighpassFilter(cutoff_frequency, order, padded_image.shape)
-        # H_u_v = gaussianHighpassFilter(cutoff_frequency, padded_image.shape)
-        # H_u_v = idealHighpassFilter(cutoff_frequency, padded_image.shape)
+        H_u_v1 = butterworthHighpassFilter(cutoff_frequency, order, padded_image.shape)
+        H_u_v2 = gaussianHighpassFilter(cutoff_frequency, padded_image.shape)
+        H_u_v3 = idealHighpassFilter(cutoff_frequency, padded_image.shape)
 
-        # H_u_v = laplacianFilter(padded_image.shape)
+        mask1, F_u_v = filterImage(image_8bits, padded_image, H_u_v1)
 
-        # laplacian = laplacianFilterSpatialDomain(image_8bits)
+        mask2, F_u_v = filterImage(image_8bits, padded_image, H_u_v2)
 
-        # mask_laplacian_kernal, F_u_v = filterImage(image_8bits, padded_image, H_u_v)
-
-        # cv2.imshow("image_8bits", image_8bits)
-
-        # cv2.imshow("mask_laplacian_kernal", mask_laplacian_kernal)
+        mask3, F_u_v = filterImage(image_8bits, padded_image, H_u_v3)
         
-
-        # mask_laplacian_kernal = cv2.normalize(mask_laplacian_kernal, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-
         c = 1
 
-    
-        smoothed_image = cv2.GaussianBlur(image_8bits, (5, 5), 0)
-        sobelx = cv2.Sobel(smoothed_image, cv2.CV_64F, 1, 0, ksize=5)
-        sobely = cv2.Sobel(smoothed_image, cv2.CV_64F, 0, 1, ksize=5)
-        gradient_magnitude = np.sqrt(sobelx**2 + sobely**2)
-        gradient_magnitude = cv2.normalize(gradient_magnitude, None, 0, 255, cv2.NORM_MINMAX)
-        gradient_magnitude = np.uint8(gradient_magnitude)
+        result1 = image_8bits + (c * mask1)
+        result2 = image_8bits + (c * mask2)
+        result3 = image_8bits + (c * mask3)
 
+        result1 = cv2.normalize(result1, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+        result2 = cv2.normalize(result2, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+        result3 = cv2.normalize(result3, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
+        cv2.imshow("butterworthHighpassFilter", result1)
 
+        cv2.imshow("gaussianHighpassFilter", result2)
 
-        cv2.imshow("gradient_magnitude", gradient_magnitude)
-
-        
-
-        laplacian = cv2.Laplacian(image_8bits, cv2.CV_64F)
-        laplacian = np.uint8(np.absolute(laplacian))
-
-        cv2.imshow("laplacian", laplacian)
-
-
-        combined_laplacian_gradient = laplacian * gradient_magnitude
-
-        cv2.imshow("combined_laplacian_gradient", combined_laplacian_gradient)
-
-        # # combined_laplacian_gradient = cv2.normalize(combined_laplacian_gradient, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-
-        laplacian[laplacian < 0] = 0
-
-        result = image_8bits + (1 * laplacian)
-
-        cv2.imshow("image_8bits", image_8bits)
-
-        cv2.imshow("result", result)
+        cv2.imshow("idealHighpassFilter", result3)
 
         cv2.waitKey(0)
 
