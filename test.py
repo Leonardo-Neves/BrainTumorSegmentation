@@ -17,67 +17,6 @@ nii_data = nii_file.get_fdata()
 
 slices = []
 
-def gaussianHighpassFilter(cutoff_frequency, shape = (0, 0)):
- 
-    rows, cols = shape[0], shape[1]
-    center_row, center_col = rows // 2, cols // 2
-
-    # New implementation
-    gaussian_filter = np.ones((rows, cols), np.float32)
-    center = (rows // 2, cols // 2)
-    i, j = np.ogrid[:rows, :cols]
-
-    distance = np.sqrt((i - center_row) ** 2 + (j - center_col) ** 2)
-    gaussian_filter = 1 - np.exp(-(distance**2) / (2 * (cutoff_frequency ** 2)))
-
-    return gaussian_filter
-
-def laplacianFilterSpatialDomain(image):
-    # laplacian_kernel = np.array([[1,  1,  1],
-    #                              [1, -8,  1],
-    #                              [1,  1,  1]])
-
-    laplacian_kernel = np.array([[0,  1,  0],
-                                 [1, -4,  1],
-                                 [0,  1,  0]])                                 
-
-    return convolve(image, laplacian_kernel)
-
-def laplacianFilter(shape = (0, 0)):
-    rows, cols = shape[0], shape[1]
-    center_row, center_col = rows // 2, cols // 2
-
-    # New implementation
-    laplacian_filter = np.ones((rows, cols), np.float32)
-    center = (rows // 2, cols // 2)
-    i, j = np.ogrid[:rows, :cols]
-
-    distance = np.sqrt((i - center_row) ** 2 + (j - center_col) ** 2)
-    laplacian_filter = (((-4) * np.pi) ** 2) * (distance ** 2)
-
-    return laplacian_filter
-
-def filterImageLaplacianFilter(image, padded_image):
-
-    padded_image = padded_image
-
-    F_u_v = np.fft.fftshift(np.fft.fft2(padded_image))
-
-    H_u_v = laplacianFilter(padded_image.shape)
-
-    # fft_filtered = F_u_v - (H_u_v * F_u_v)
-    fft_filtered = (1 - H_u_v) * F_u_v
-
-    fft_filtered = np.abs(np.fft.ifft2(fft_filtered))
-
-    height, width = image.shape
-    fft_filtered = fft_filtered[:height, :width]
-
-    cv2.imshow("fft_filtered", fft_filtered)
-
-    return cv2.normalize(fft_filtered, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-
-
 def butterworthHighpassFilter(cutoff_frequency, order, shape = (0, 0)):
     rows, cols = shape[0], shape[1]
     center_row, center_col = rows // 2, cols // 2
@@ -108,6 +47,21 @@ def idealHighpassFilter(cutoff_frequency, shape=(0, 0)):
     ideal_filter = np.where(distance > cutoff_frequency, 1, 0)
 
     return ideal_filter
+
+def gaussianHighpassFilter(cutoff_frequency, shape = (0, 0)):
+ 
+    rows, cols = shape[0], shape[1]
+    center_row, center_col = rows // 2, cols // 2
+
+    # New implementation
+    gaussian_filter = np.ones((rows, cols), np.float32)
+    center = (rows // 2, cols // 2)
+    i, j = np.ogrid[:rows, :cols]
+
+    distance = np.sqrt((i - center_row) ** 2 + (j - center_col) ** 2)
+    gaussian_filter = 1 - np.exp(-(distance**2) / (2 * (cutoff_frequency ** 2)))
+
+    return gaussian_filter
 
 def filterImage(image, padded_image, kernel):
 
@@ -143,38 +97,43 @@ def padImage(image):
 def normalizeZeroToOne(image):
     return (image - np.min(image)) / (np.max(image) - np.min(image))
 
-def section38Book(image_8bits):
+def getMeanCentroid(mask_mean):
+    # Find the pick of intensity in the mean mask
+    hot_point_mask = np.where(mask_mean == np.max(mask_mean), 255, 0)
+    hot_point_mask = cv2.normalize(hot_point_mask, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
-    smoothed_image = cv2.GaussianBlur(image_8bits, (5, 5), 0)
-    sobelx = cv2.Sobel(smoothed_image, cv2.CV_64F, 1, 0, ksize=5)
-    sobely = cv2.Sobel(smoothed_image, cv2.CV_64F, 0, 1, ksize=5)
-    gradient_magnitude = np.sqrt(sobelx**2 + sobely**2)
-    gradient_magnitude = cv2.normalize(gradient_magnitude, None, 0, 255, cv2.NORM_MINMAX)
-    gradient_magnitude = np.uint8(gradient_magnitude)
+    # Finding the median point
+    contours, _ = cv2.findContours(hot_point_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    laplacian = cv2.Laplacian(image_8bits, cv2.CV_64F)
-    laplacian = np.uint8(np.absolute(laplacian))
+    if contours[0].shape != (1, 1, 2):
 
-    combined_laplacian_gradient = laplacian * gradient_magnitude
+        centroids = []
 
-    laplacian[laplacian < 0] = 0
+        for countour in contours:
+            M = cv2.moments(countour)
 
-    result = image_8bits + (1 * laplacian)
+            cX, cY = 0, 0
 
-    cv2.imshow("gradient_magnitude", gradient_magnitude)
+            if M["m00"] != 0:
+                cX = int(M["m10"] / M["m00"])
+                cY = int(M["m01"] / M["m00"])
 
-    cv2.imshow("laplacian", laplacian)
+            if cX != 0 and cY != 0:
+                centroids.append([cX, cY])
+            
+        centroids_dataframe = pd.DataFrame(centroids, columns=['X', 'Y'])
 
-    cv2.imshow("combined_laplacian_gradient", combined_laplacian_gradient)
+        mean_centroid_x = int(centroids_dataframe['X'].mean())
+        mean_centroid_y = int(centroids_dataframe['Y'].mean())
 
-    cv2.imshow("image_8bits", image_8bits)
-
-    cv2.imshow("result", result)
-
-    cv2.waitKey(0)
+        return mean_centroid_x, mean_centroid_y
+    else:
+        return contours[0][0][0][0], contours[0][0][0][1]
 
 cutoff_frequency = 40
 order = 2
+
+processed_images = []
 
 for i in range(nii_data.shape[2]):
 
@@ -184,40 +143,129 @@ for i in range(nii_data.shape[2]):
         image_8bits = cv2.normalize(axial_slice, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
         image_8bits = cv2.resize(image_8bits, (640, 640))
 
-        # --------------------- Shading correction ---------------------
-        # background = cv2.GaussianBlur(image_8bits, (51, 51), 0)
-        # corrected_image = cv2.subtract(image_8bits, background)
-        # corrected_image = cv2.normalize(corrected_image, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-
-        # --------------------- Sharpening with Laplacian kernel ---------------------
-
         padded_image = padImage(image_8bits)
 
-        H_u_v1 = butterworthHighpassFilter(cutoff_frequency, order, padded_image.shape)
-        H_u_v2 = gaussianHighpassFilter(cutoff_frequency, padded_image.shape)
-        H_u_v3 = idealHighpassFilter(cutoff_frequency, padded_image.shape)
+        # Gaussian High-Pass Filter
+        H_u_v = gaussianHighpassFilter(cutoff_frequency, padded_image.shape)
 
-        mask1, F_u_v = filterImage(image_8bits, padded_image, H_u_v1)
+        mask_butterworth, F_u_v = filterImage(image_8bits, padded_image, H_u_v)
 
-        mask2, F_u_v = filterImage(image_8bits, padded_image, H_u_v2)
-
-        mask3, F_u_v = filterImage(image_8bits, padded_image, H_u_v3)
-        
         c = 1
 
-        result1 = image_8bits + (c * mask1)
-        result2 = image_8bits + (c * mask2)
-        result3 = image_8bits + (c * mask3)
+        image_8bits_filtered_butterworth = image_8bits + (c * mask_butterworth)
 
-        result1 = cv2.normalize(result1, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-        result2 = cv2.normalize(result2, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-        result3 = cv2.normalize(result3, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+        image_8bits_filtered_butterworth = cv2.normalize(image_8bits_filtered_butterworth, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
-        cv2.imshow("butterworthHighpassFilter", result1)
+        blur = cv2.GaussianBlur(image_8bits_filtered_butterworth, (5, 5) ,0)
 
-        cv2.imshow("gaussianHighpassFilter", result2)
+        # Selecting only the region of the brain
+        ret3, mask_otsu = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
-        cv2.imshow("idealHighpassFilter", result3)
+        contours, _ = cv2.findContours(mask_otsu, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        cv2.waitKey(0)
+        mask_non_zero_region = np.zeros_like(mask_otsu)
+        cv2.drawContours(mask_non_zero_region, contours, -1, 255, -1)
 
+        non_uniform_region = cv2.bitwise_and(blur, blur, mask=mask_non_zero_region)
+        pixels = non_uniform_region[mask_non_zero_region == 255]
+
+        # Otsu's Thresholding
+        threshold = round(dip.otsuThresholding(pixels))
+
+        mask_otsu = np.where(blur >= threshold, 255, 0)
+        mask_otsu = cv2.normalize(mask_otsu, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+
+        processed_images.append(mask_otsu)
+
+mask_mean = np.mean(processed_images, axis=0).astype(np.uint8)
+
+# Otsu's Thresholding
+mask_non_zero_region = np.where(mask_mean > 0, 255, 0)
+mask_non_zero_region = cv2.normalize(mask_non_zero_region, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+
+non_uniform_region = cv2.bitwise_and(mask_mean, mask_mean, mask=mask_non_zero_region)
+pixels = non_uniform_region[mask_non_zero_region == 255]
+
+threshold = round(dip.otsuThresholding(pixels))
+
+mask_otsu = np.where(mask_mean >= threshold, 255, 0)
+mask_otsu = cv2.normalize(mask_otsu, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+
+# Mean Centroid
+
+mean_centroid_x, mean_centroid_y = getMeanCentroid(mask_mean)
+
+# Filtering the countours using the median point
+contours_drawn = []
+
+for slice in processed_images:
+
+    contours_slice, _ = cv2.findContours(slice, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    min_distance = 0
+
+    best_countour = None
+    best_centroid = None
+
+    for countour in contours_slice:
+        M = cv2.moments(countour)
+
+        centroid_x, centroid_y = 0, 0
+
+        if M["m00"] != 0:
+            centroid_x = int(M["m10"] / M["m00"])
+            centroid_y = int(M["m01"] / M["m00"])
+
+        if centroid_x != 0 and centroid_y != 0:
+
+            point1 = np.array([centroid_x, centroid_y])
+            point2 = np.array([mean_centroid_x, mean_centroid_y])
+
+            # Euclidean distance
+            distance = np.abs(np.linalg.norm(point1 - point2))
+
+            if distance < min_distance or min_distance == 0:
+                min_distance = distance
+                best_countour = countour
+                best_centroid = [centroid_x, centroid_y]
+
+    area = cv2.contourArea(best_countour)
+
+    # Pixel units
+    if area >= 100:
+        drawed_contours = np.zeros_like(slice)
+        cv2.drawContours(drawed_contours, [best_countour], -1, 255, -1)
+        contours_drawn.append([best_countour, drawed_contours, best_centroid, area])
+
+mask_result = np.zeros_like(mask_mean)
+
+for i in range(1, len(contours_drawn)):
+    
+    actual_contour = contours_drawn[i][0]
+    actual_contour_drawed = contours_drawn[i][1]
+    actual_contour_centroid = contours_drawn[i][2]
+    actual_contour_area = contours_drawn[i][3]
+
+    previous_contour = contours_drawn[i-1][0]
+    previous_contour_drawed = contours_drawn[i-1][1]
+    previous_contour_centroid = contours_drawn[i-1][2]
+    previous_contour_area = contours_drawn[i-1][3]
+
+    # mask_result = cv2.bitwise_and(contours_drawn[i], contours_drawn[i-1])
+
+    similarity = cv2.matchShapes(actual_contour, previous_contour, cv2.CONTOURS_MATCH_I1, 0.0)
+
+    distance = np.abs(np.linalg.norm(actual_contour_centroid - previous_contour_centroid))
+
+    print(f'actual_contour_centroid: {actual_contour_centroid} previous_contour_centroid: {previous_contour_centroid} actual_contour_area: {actual_contour_area} previous_contour_area: {previous_contour_area} similarity: {similarity} distance: {distance}')
+
+    cv2.imshow('contours_drawn[i]', actual_contour_drawed)
+    cv2.imshow('contours_drawn[i-1]', previous_contour_drawed)
+    cv2.waitKey(0)
+
+
+
+# cv2.imshow("mask_mean", mask_mean)
+# cv2.imshow("mask_otsu", mask_otsu)
+
+# cv2.waitKey(0)
