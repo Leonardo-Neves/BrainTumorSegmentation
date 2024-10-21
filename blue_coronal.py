@@ -123,17 +123,18 @@ clahe = cv2.createCLAHE(clipLimit=2.1, tileGridSize=(12, 12))
 
 processed_images = []
 
-for i in range(nii_data.shape[2]):
+for i in range(nii_data.shape[1]):
 
     # if i >= 40 and i <= 82: # BraTS20_Training_001_t1ce.nii
     # if i >= 38 and i <= 70: # BraTS20_Training_002_t1ce.nii
-    if i >= 150 and i <= 154: # BraTS20_Training_003_t1ce.nii
+    if i >= 150 and i <= 170: # BraTS20_Training_003_t1ce.nii
         axial_slice = nii_data[:, i, :]
 
         image_8bits = cv2.normalize(axial_slice, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-        image_8bits = cv2.resize(image_8bits, (640, 640))
+        image_8bits = cv2.rotate(image_8bits, cv2.ROTATE_90_COUNTERCLOCKWISE)
+        image_8bits = cv2.resize(image_8bits, (800, 640))
 
-        cv2.imshow('image_8bits', image_8bits)
+        # cv2.imshow('image_8bits', image_8bits)
 
         padded_image = fd.padImage(image_8bits)
 
@@ -146,7 +147,7 @@ for i in range(nii_data.shape[2]):
         # Adaptive Histogram Equalization
         image_8bits_ahe = clahe.apply(image_8bits_filtered_gaussian)
 
-        cv2.imshow('image_8bits_ahe', image_8bits_ahe)
+        # cv2.imshow('image_8bits_ahe', image_8bits_ahe)
 
         # Selecting only the region of the brain
         ret3, mask_otsu = cv2.threshold(image_8bits_ahe, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
@@ -156,7 +157,7 @@ for i in range(nii_data.shape[2]):
         mask_non_zero_region = np.zeros_like(mask_otsu)
         cv2.drawContours(mask_non_zero_region, contours, -1, 255, -1)
 
-        cv2.imshow('mask_non_zero_region', mask_non_zero_region)
+        # cv2.imshow('mask_non_zero_region', mask_non_zero_region)
 
         # Otsu's Thresholding
         region_of_interest = cv2.bitwise_and(image_8bits_ahe, image_8bits_ahe, mask=mask_non_zero_region)
@@ -165,117 +166,151 @@ for i in range(nii_data.shape[2]):
         otsu_threshold_value = cv2.threshold(roi_values, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[0]
         thresholded_region = cv2.threshold(region_of_interest, otsu_threshold_value, 255, cv2.THRESH_BINARY)[1]
 
-        cv2.imshow('mask_otsu', thresholded_region)
+        # cv2.imshow('mask_otsu', thresholded_region)
 
         # ADAPTIVE_THRESH_MEAN_C
 
         th2 = cv2.adaptiveThreshold(region_of_interest, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
 
-        cv2.imshow('ADAPTIVE_THRESH_MEAN_C', th2)
+        # cv2.imshow('ADAPTIVE_THRESH_MEAN_C', th2)
 
         window_size = 9
         thresh_niblack = threshold_niblack(image_8bits_ahe, window_size=window_size, k=0.001)
         binary_niblack = image_8bits_ahe > thresh_niblack
 
-        cv2.imshow('binary_niblack', binary_niblack.astype(np.uint8) * 255)
+        # cv2.imshow('binary_niblack', binary_niblack.astype(np.uint8) * 255)
 
         window_size = 87
         thresh_sauvola = threshold_sauvola(region_of_interest, window_size=window_size)
 
         binary_sauvola = region_of_interest > thresh_sauvola
 
-        cv2.imshow('binary_sauvola', binary_sauvola.astype(np.uint8) * 255)
+        # cv2.imshow('binary_sauvola', binary_sauvola.astype(np.uint8) * 255)
 
         window_size = 5
         contrast_threshold = 20
         bernsen_result = mahotas.thresholding.bernsen(image_8bits_ahe, window_size, contrast_threshold)
 
-        cv2.imshow('bernsen_result', bernsen_result.astype(np.uint8))
+        # cv2.imshow('bernsen_result', bernsen_result.astype(np.uint8)) 
 
-        sigma = 0.01
-        log_edges = laplacian_of_gaussian(image_8bits_ahe, sigma)
+        blur = cv2.GaussianBlur(image_8bits_ahe, (7, 7) ,0)
 
-        cv2.imshow('log_edges', log_edges)
+        sigma = 0.001
+        log_edges = laplacian_of_gaussian(blur, sigma)
 
+        # cv2.imshow('log_edges', log_edges)
 
-        cv2.waitKey(0)
+        # blurred_image = cv2.GaussianBlur(image_8bits_ahe, (3, 3), 1.4)
 
-        processed_images.append(mask_otsu)
+        edges = cv2.Canny(image_8bits_ahe, 0, 180)
+
+        # cv2.imshow('edges', edges)
+
+        sobel_x = cv2.Sobel(image_8bits_ahe, cv2.CV_64F, 1, 0, ksize=3)
+        sobel_y = cv2.Sobel(image_8bits_ahe, cv2.CV_64F, 0, 1, ksize=3)
+        sobel_combined = cv2.magnitude(sobel_x, sobel_y)
+        sobel_combined = np.uint8(np.absolute(sobel_combined))
+
+        # Step 4: Threshold the Sobel output to create a binary image
+        _, binary_image = cv2.threshold(sobel_combined, 50, 255, cv2.THRESH_BINARY)
+
+        # Close gaps
+        kernel = np.ones((3, 3), np.uint8)
+        closed_image = cv2.morphologyEx(binary_image, cv2.MORPH_CLOSE, kernel)
+
+        # cv2.imshow('closed_image', closed_image)
+
+        # cv2.waitKey(0)
+
+        processed_images.append(closed_image)
 
 mask_mean = np.mean(processed_images, axis=0).astype(np.uint8)
 
 cv2.imshow('mask_mean', mask_mean)
 
-# Otsu's Thresholding
-mask_non_zero_region = np.where(mask_mean > 0, 255, 0)
-mask_non_zero_region = cv2.normalize(mask_non_zero_region, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+cv2.imwrite('mask_mean.png', mask_mean)
 
-non_uniform_region = cv2.bitwise_and(mask_mean, mask_mean, mask=mask_non_zero_region)
-pixels = non_uniform_region[mask_non_zero_region == 255]
+# opening = cv2.morphologyEx(mask_mean, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+# mask_mean = cv2.GaussianBlur(mask_mean, (7, 7) ,0)
 
-threshold = round(dip.otsuThresholding(pixels))
+# edges = cv2.Canny(mask_mean, 50, 180)
 
-mask_otsu = np.where(mask_mean >= threshold, 255, 0)
-mask_otsu = cv2.normalize(mask_otsu, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+# cv2.imshow('edges', edges)
 
-# Mean Centroid
+# cv2.waitKey(0)
 
-mean_centroid_x, mean_centroid_y = getMeanCentroid(mask_mean)
+# # Otsu's Thresholding
+# mask_non_zero_region = np.where(mask_mean > 0, 255, 0)
+# mask_non_zero_region = cv2.normalize(mask_non_zero_region, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
-# Filtering the countours using the median point
-contours_drawn = []
+# non_uniform_region = cv2.bitwise_and(mask_mean, mask_mean, mask=mask_non_zero_region)
+# pixels = non_uniform_region[mask_non_zero_region == 255]
 
-for slice in processed_images:
+# threshold = round(dip.otsuThresholding(pixels))
 
-    contours_slice, _ = cv2.findContours(slice, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+# mask_otsu = np.where(mask_mean >= threshold, 255, 0)
+# mask_otsu = cv2.normalize(mask_otsu, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
-    min_distance = 0
+# # Mean Centroid
 
-    best_countour = None
-    best_centroid = None
+# mean_centroid_x, mean_centroid_y = getMeanCentroid(mask_mean)
 
-    for countour in contours_slice:
-        M = cv2.moments(countour)
+# # Filtering the countours using the median point
+# contours_drawn = []
 
-        centroid_x, centroid_y = 0, 0
+# for slice in processed_images:
 
-        if M["m00"] != 0:
-            centroid_x = int(M["m10"] / M["m00"])
-            centroid_y = int(M["m01"] / M["m00"])
+#     contours_slice, _ = cv2.findContours(slice, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-        if centroid_x != 0 and centroid_y != 0:
+#     min_distance = 0
 
-            point1 = np.array([centroid_x, centroid_y])
-            point2 = np.array([mean_centroid_x, mean_centroid_y])
+#     best_countour = None
+#     best_centroid = None
 
-            # Euclidean distance
-            distance = np.abs(np.linalg.norm(point1 - point2))
+#     for countour in contours_slice:
+#         M = cv2.moments(countour)
 
-            if distance < min_distance or min_distance == 0:
-                min_distance = distance
-                best_countour = countour
-                best_centroid = [centroid_x, centroid_y]
+#         centroid_x, centroid_y = 0, 0
 
-    area = cv2.contourArea(best_countour)
+#         if M["m00"] != 0:
+#             centroid_x = int(M["m10"] / M["m00"])
+#             centroid_y = int(M["m01"] / M["m00"])
 
-    # Pixel units
-    if area >= 100:
-        drawed_contours = np.zeros_like(slice)
-        cv2.drawContours(drawed_contours, [best_countour], -1, 255, -1)
-        contours_drawn.append([best_countour, drawed_contours, best_centroid, area])
+#         if centroid_x != 0 and centroid_y != 0:
 
-contours_drawed = [contours[1] for contours in contours_drawn]
+#             point1 = np.array([centroid_x, centroid_y])
+#             point2 = np.array([mean_centroid_x, mean_centroid_y])
 
-masks = np.stack(contours_drawed)
-frequency_matrix = np.zeros_like(mask_mean, dtype=np.int32)
+#             # Euclidean distance
+#             distance = np.abs(np.linalg.norm(point1 - point2))
 
-for mask in masks:
-    frequency_matrix += (mask == 255).astype(int)
+#             if distance < min_distance or min_distance == 0:
+#                 min_distance = distance
+#                 best_countour = countour
+#                 best_centroid = [centroid_x, centroid_y]
 
-plt.imshow(frequency_matrix, cmap='hot', interpolation='nearest')
-plt.colorbar(label="Frequency of 255")
-plt.title("Frequency Distribution of Pixel Value 255")
-plt.show()
+#     area = cv2.contourArea(best_countour)
+
+#     # Pixel units
+#     if area >= 100:
+#         drawed_contours = np.zeros_like(slice)
+#         cv2.drawContours(drawed_contours, [best_countour], -1, 255, -1)
+#         contours_drawn.append([best_countour, drawed_contours, best_centroid, area])
+
+# contours_drawed = [contours[1] for contours in contours_drawn]
+
+# if len(contours_drawed) > 0:
+
+#     masks = np.stack(contours_drawed)
+#     frequency_matrix = np.zeros_like(mask_mean, dtype=np.int32)
+
+#     for mask in masks:
+#         frequency_matrix += (mask == 255).astype(int)
+
+#     plt.imshow(frequency_matrix, cmap='hot', interpolation='nearest')
+#     plt.colorbar(label="Frequency of 255")
+#     plt.title("Frequency Distribution of Pixel Value 255")
+#     plt.show()
 
 # image = np.ones_like(mask_mean)
 

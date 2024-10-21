@@ -14,7 +14,7 @@ image_segmentation_path = r"C:\Users\leosn\Desktop\PIM\datasets\MICCAI_BraTS_202
 nii_file = nib.load(image_path)
 nii_data = nii_file.get_fdata()
 
-for i in range(nii_data.shape[2]):
+for i in range(nii_data.shape[1]):
     axial_slice = nii_data[:, i, :]
 
     axial_slice_8 = cv2.normalize(axial_slice, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
@@ -25,7 +25,7 @@ for i in range(nii_data.shape[2]):
 nii_segmentation_file = nib.load(image_segmentation_path)
 nii_segmentation_data = nii_segmentation_file.get_fdata()
 
-for i in range(nii_segmentation_data.shape[2]):
+for i in range(nii_segmentation_data.shape[1]):
     axial_slice = nii_segmentation_data[:, i, :]
 
     axial_slice_8 = cv2.normalize(axial_slice, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)

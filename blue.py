@@ -10,7 +10,7 @@ from utils.digital_image_processing import DigitalImageProcessing
 
 dip = DigitalImageProcessing()
 
-image_path = r"C:\Users\leosn\Desktop\PIM\datasets\MICCAI_BraTS_2020_Data_Training\BraTS2020_TrainingData\MICCAI_BraTS2020_TrainingData\BraTS20_Training_003\BraTS20_Training_003_t1ce.nii"
+image_path = r"C:\Users\leosn\Desktop\PIM\datasets\MICCAI_BraTS_2020_Data_Training\BraTS2020_TrainingData\MICCAI_BraTS2020_TrainingData\BraTS20_Training_001\BraTS20_Training_001_t1ce.nii"
 
 nii_file = nib.load(image_path)
 nii_data = nii_file.get_fdata()
@@ -137,15 +137,15 @@ processed_images = []
 
 for i in range(nii_data.shape[2]):
 
-    # if i >= 40 and i <= 82: # BraTS20_Training_001_t1ce.nii
+    if i >= 40 and i <= 82: # BraTS20_Training_001_t1ce.nii
     # if i >= 38 and i <= 70: # BraTS20_Training_002_t1ce.nii
-    if i >= 61 and i <= 78: # BraTS20_Training_003_t1ce.nii
+    # if i >= 61 and i <= 78: # BraTS20_Training_003_t1ce.nii
         axial_slice = nii_data[:, :, i]
 
         image_8bits = cv2.normalize(axial_slice, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
         image_8bits = cv2.resize(image_8bits, (640, 640))
 
-        cv2.imshow('image_8bits', image_8bits)
+        # cv2.imshow('image_8bits', image_8bits)
 
         padded_image = padImage(image_8bits)
 
@@ -162,7 +162,7 @@ for i in range(nii_data.shape[2]):
 
         blur = cv2.GaussianBlur(image_8bits_filtered_butterworth, (5, 5) ,0)
 
-        cv2.imshow('blur', blur)
+        # cv2.imshow('blur', blur)
 
         # Selecting only the region of the brain
         ret3, mask_otsu = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
@@ -181,9 +181,9 @@ for i in range(nii_data.shape[2]):
         mask_otsu = np.where(blur >= threshold, 255, 0)
         mask_otsu = cv2.normalize(mask_otsu, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
-        cv2.imshow('mask_otsu', mask_otsu)
+        # cv2.imshow('mask_otsu', mask_otsu)
 
-        cv2.waitKey(0)
+        # cv2.waitKey(0)
 
         processed_images.append(mask_otsu)
 
