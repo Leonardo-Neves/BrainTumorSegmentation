@@ -6,9 +6,14 @@ import numpy as np
 import cv2
 import os
 
+from skimage.filters import threshold_niblack, threshold_sauvola
+import mahotas
+
 from utils.digital_image_processing import DigitalImageProcessing
+from utils.frequency_domain import FrequencyDomain
 
 dip = DigitalImageProcessing()
+fd = FrequencyDomain()
 
 image_path = r"C:\Users\leosn\Desktop\PIM\datasets\MICCAI_BraTS_2020_Data_Training\BraTS2020_TrainingData\MICCAI_BraTS2020_TrainingData\BraTS20_Training_003\BraTS20_Training_003_t1ce.nii"
 
@@ -17,82 +22,63 @@ nii_data = nii_file.get_fdata()
 
 slices = []
 
-def butterworthHighpassFilter(cutoff_frequency, order, shape = (0, 0)):
-    rows, cols = shape[0], shape[1]
-    center_row, center_col = rows // 2, cols // 2
+def manual_adaptive_threshold_with_mask(img, mask, max_value, method, threshold_type, block_size, C):
+    # Ensure the image is in grayscale
+    if len(img.shape) == 3:
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-    # New implementation
-    butterworth_filter = np.ones((rows, cols), np.float32)
-    center = (rows // 2, cols // 2)
-    i, j = np.ogrid[:rows, :cols]
+    # Step 1: Create an output image initialized to zeros (black)
+    output = np.zeros_like(img)
 
-    distance = np.sqrt((i - center_row) ** 2 + (j - center_col) ** 2)
-    butterworth_filter = 1 / (1 + (cutoff_frequency / distance)**(2 * order))
+    # Step 2: Apply the mask to extract the region of interest
+    region_of_interest = cv2.bitwise_and(img, img, mask=mask)
 
-    return butterworth_filter
+    # Step 3: Calculate the mean filter using a block size (neighborhood size) on the region of interest
+    mean_filter = cv2.boxFilter(region_of_interest, ddepth=-1, ksize=(block_size, block_size), normalize=True)
 
-def idealHighpassFilter(cutoff_frequency, shape=(0, 0)):
-    rows, cols = shape
-    center_row, center_col = rows // 2, cols // 2
+    # Step 4: Apply thresholding only to the region of interest
+    thresholded = region_of_interest - mean_filter + C  # Calculate pixel-wise threshold
 
-    # Create meshgrid for row and column indices
-    x = np.arange(0, rows) - center_row
-    y = np.arange(0, cols) - center_col
-    X, Y = np.meshgrid(x, y, indexing='ij')
+    # Apply binary threshold based on the chosen type
+    if threshold_type == cv2.THRESH_BINARY:
+        adaptive_result = np.where(thresholded > 0, max_value, 0)
+    elif threshold_type == cv2.THRESH_BINARY_INV:
+        adaptive_result = np.where(thresholded > 0, 0, max_value)
 
-    # Compute the distance from the center for all points
-    distance = np.sqrt(X**2 + Y**2)
+    # Ensure the result is in the correct format
+    adaptive_result = adaptive_result.astype(np.uint8)
 
-    # Apply the cutoff frequency threshold
-    ideal_filter = np.where(distance > cutoff_frequency, 1, 0)
+    # Step 5: Place the thresholded pixels back into the output image
+    output[mask > 0] = adaptive_result[mask > 0]
 
-    return ideal_filter
+    # Step 6: Keep the original image in areas where the mask is zero
+    output[mask == 0] = img[mask == 0]
 
-def gaussianHighpassFilter(cutoff_frequency, shape = (0, 0)):
- 
-    rows, cols = shape[0], shape[1]
-    center_row, center_col = rows // 2, cols // 2
+    return output
 
-    # New implementation
-    gaussian_filter = np.ones((rows, cols), np.float32)
-    center = (rows // 2, cols // 2)
-    i, j = np.ogrid[:rows, :cols]
-
-    distance = np.sqrt((i - center_row) ** 2 + (j - center_col) ** 2)
-    gaussian_filter = 1 - np.exp(-(distance**2) / (2 * (cutoff_frequency ** 2)))
-
-    return gaussian_filter
-
-def filterImage(image, padded_image, kernel):
-
-    # 1° f(x, y) as M x N, pad the image, P = 2M and Q = 2N
-    padded_image = padded_image
-
-    # 2° Compute the Fourier transform and center the spectrum
-    F_u_v = np.fft.fftshift(np.fft.fft2(padded_image))
-
-    # 3° Creating Sobel kernel
-    H_u_v = kernel
-
-    # 4° Applying the filter to the image
-    fft_filtered = F_u_v * H_u_v
-
-    # 5° Apply Inverse Fourier Transform to obtain the filtered image
-    filtered_image = np.abs(np.fft.ifft2(fft_filtered))
-
-    # 6° Removing pad from the image
-    height, width = image.shape
-    filtered_image = filtered_image[:height, :width]
-
-    return filtered_image, F_u_v
-
-def padImage(image):
+def laplacian_of_gaussian(img, sigma=1.0):
+    """
+    Apply Laplacian of Gaussian (LoG) to an image.
     
-    height, width = image.shape
-    padded_image = np.zeros((2 * height, 2 * width), dtype=np.uint8)
-    padded_image[:height, :width] = image
-
-    return padded_image
+    Parameters:
+    - img: Input grayscale image.
+    - sigma: Standard deviation for Gaussian kernel.
+    
+    Returns:
+    - LoG edge-detected image.
+    """
+    # Step 1: Apply Gaussian smoothing
+    blurred = cv2.GaussianBlur(img, (0, 0), sigma)
+    
+    # Step 2: Apply Laplacian operator
+    laplacian = cv2.Laplacian(blurred, cv2.CV_64F)
+    
+    # Step 3: Find zero-crossings (edges)
+    zero_crossing = np.zeros_like(laplacian)
+    zero_crossing[np.where(np.diff(np.sign(laplacian), axis=0))] = 255
+    zero_crossing[np.where(np.diff(np.sign(laplacian), axis=1))] = 255
+    
+    return zero_crossing
 
 def normalizeZeroToOne(image):
     return (image - np.min(image)) / (np.max(image) - np.min(image))
@@ -131,7 +117,9 @@ def getMeanCentroid(mask_mean):
         return contours[0][0][0][0], contours[0][0][0][1]
 
 cutoff_frequency = 40
-order = 2
+c = 1
+
+clahe = cv2.createCLAHE(clipLimit=2.1, tileGridSize=(12, 12))
 
 processed_images = []
 
@@ -139,55 +127,84 @@ for i in range(nii_data.shape[2]):
 
     # if i >= 40 and i <= 82: # BraTS20_Training_001_t1ce.nii
     # if i >= 38 and i <= 70: # BraTS20_Training_002_t1ce.nii
-    if i >= 61 and i <= 78: # BraTS20_Training_003_t1ce.nii
-        axial_slice = nii_data[:, :, i]
+    if i >= 150 and i <= 154: # BraTS20_Training_003_t1ce.nii
+        axial_slice = nii_data[:, i, :]
 
         image_8bits = cv2.normalize(axial_slice, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
         image_8bits = cv2.resize(image_8bits, (640, 640))
 
         cv2.imshow('image_8bits', image_8bits)
 
-        padded_image = padImage(image_8bits)
+        padded_image = fd.padImage(image_8bits)
 
         # Gaussian High-Pass Filter
-        H_u_v = gaussianHighpassFilter(cutoff_frequency, padded_image.shape)
+        H_u_v = fd.gaussianHighpassFilter(cutoff_frequency, padded_image.shape)
+        mask_gaussian, F_u_v = fd.filterImage(image_8bits, padded_image, H_u_v)
+        image_8bits_filtered_gaussian = image_8bits + (c * mask_gaussian)
+        image_8bits_filtered_gaussian = cv2.normalize(image_8bits_filtered_gaussian, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
-        mask_butterworth, F_u_v = filterImage(image_8bits, padded_image, H_u_v)
+        # Adaptive Histogram Equalization
+        image_8bits_ahe = clahe.apply(image_8bits_filtered_gaussian)
 
-        c = 1
-
-        image_8bits_filtered_butterworth = image_8bits + (c * mask_butterworth)
-
-        image_8bits_filtered_butterworth = cv2.normalize(image_8bits_filtered_butterworth, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
-
-        blur = cv2.GaussianBlur(image_8bits_filtered_butterworth, (5, 5) ,0)
-
-        cv2.imshow('blur', blur)
+        cv2.imshow('image_8bits_ahe', image_8bits_ahe)
 
         # Selecting only the region of the brain
-        ret3, mask_otsu = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+        ret3, mask_otsu = cv2.threshold(image_8bits_ahe, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
 
         contours, _ = cv2.findContours(mask_otsu, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
         mask_non_zero_region = np.zeros_like(mask_otsu)
         cv2.drawContours(mask_non_zero_region, contours, -1, 255, -1)
 
-        non_uniform_region = cv2.bitwise_and(blur, blur, mask=mask_non_zero_region)
-        pixels = non_uniform_region[mask_non_zero_region == 255]
+        cv2.imshow('mask_non_zero_region', mask_non_zero_region)
 
         # Otsu's Thresholding
-        threshold = round(dip.otsuThresholding(pixels))
+        region_of_interest = cv2.bitwise_and(image_8bits_ahe, image_8bits_ahe, mask=mask_non_zero_region)
+        roi_values = region_of_interest[region_of_interest > 0]
 
-        mask_otsu = np.where(blur >= threshold, 255, 0)
-        mask_otsu = cv2.normalize(mask_otsu, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+        otsu_threshold_value = cv2.threshold(roi_values, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[0]
+        thresholded_region = cv2.threshold(region_of_interest, otsu_threshold_value, 255, cv2.THRESH_BINARY)[1]
 
-        cv2.imshow('mask_otsu', mask_otsu)
+        cv2.imshow('mask_otsu', thresholded_region)
+
+        # ADAPTIVE_THRESH_MEAN_C
+
+        th2 = cv2.adaptiveThreshold(region_of_interest, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, 11, 2)
+
+        cv2.imshow('ADAPTIVE_THRESH_MEAN_C', th2)
+
+        window_size = 9
+        thresh_niblack = threshold_niblack(image_8bits_ahe, window_size=window_size, k=0.001)
+        binary_niblack = image_8bits_ahe > thresh_niblack
+
+        cv2.imshow('binary_niblack', binary_niblack.astype(np.uint8) * 255)
+
+        window_size = 87
+        thresh_sauvola = threshold_sauvola(region_of_interest, window_size=window_size)
+
+        binary_sauvola = region_of_interest > thresh_sauvola
+
+        cv2.imshow('binary_sauvola', binary_sauvola.astype(np.uint8) * 255)
+
+        window_size = 5
+        contrast_threshold = 20
+        bernsen_result = mahotas.thresholding.bernsen(image_8bits_ahe, window_size, contrast_threshold)
+
+        cv2.imshow('bernsen_result', bernsen_result.astype(np.uint8))
+
+        sigma = 0.01
+        log_edges = laplacian_of_gaussian(image_8bits_ahe, sigma)
+
+        cv2.imshow('log_edges', log_edges)
+
 
         cv2.waitKey(0)
 
         processed_images.append(mask_otsu)
 
 mask_mean = np.mean(processed_images, axis=0).astype(np.uint8)
+
+cv2.imshow('mask_mean', mask_mean)
 
 # Otsu's Thresholding
 mask_non_zero_region = np.where(mask_mean > 0, 255, 0)

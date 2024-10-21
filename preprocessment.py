@@ -10,7 +10,7 @@ from utils.digital_image_processing import DigitalImageProcessing
 
 dip = DigitalImageProcessing()
 
-image_path = r"C:\Users\leosn\Desktop\PIM\datasets\MICCAI_BraTS_2020_Data_Training\BraTS2020_TrainingData\MICCAI_BraTS2020_TrainingData\BraTS20_Training_001\BraTS20_Training_001_t2.nii"
+image_path = r"C:\Users\leosn\Desktop\PIM\datasets\MICCAI_BraTS_2020_Data_Training\BraTS2020_TrainingData\MICCAI_BraTS2020_TrainingData\BraTS20_Training_003\BraTS20_Training_003_t1ce.nii"
 
 nii_file = nib.load(image_path)
 nii_data = nii_file.get_fdata()
@@ -173,12 +173,42 @@ def section38Book(image_8bits):
 
     cv2.waitKey(0)
 
+def section38Book2(image_8bits):
+    laplacian_kernel = np.array([[1, 1, 1], 
+                                 [1, -8, 1], 
+                                 [1, 1, 1]], dtype=np.float32)
+
+    laplacian = cv2.filter2D(image_8bits, -1, laplacian_kernel)
+
+    sobel_x = cv2.Sobel(image_8bits, cv2.CV_64F, 1, 0, ksize=1)
+    sobel_y = cv2.Sobel(image_8bits, cv2.CV_64F, 0, 1, ksize=1)
+
+    gradient_magnitude = np.sqrt(sobel_x**2 + sobel_y**2)
+    # Normalize the gradient magnitude to 0-255 range
+    gradient_magnitude = np.uint8(255 * gradient_magnitude / np.max(gradient_magnitude))
+
+    # Step 3: Multiply the Laplacian and the gradient magnitude
+    # Convert the Laplacian to the same type as gradient magnitude
+    laplacian_normalized = np.uint8(255 * laplacian / np.max(laplacian))
+    mask_combined_result = cv2.multiply(laplacian_normalized, gradient_magnitude)
+
+    
+    
+    cv2.imshow("mask_combined_result", mask_combined_result)
+
+    image_8bits_mask_combined_result = image_8bits + (1 * gradient_magnitude)
+
+    image_8bits_mask_combined_result = cv2.normalize(image_8bits_mask_combined_result, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+
+    cv2.imshow("image_8bits_mask_combined_result", image_8bits_mask_combined_result)
+
 cutoff_frequency = 40
 order = 2
 
 for i in range(nii_data.shape[2]):
 
-    if i >= 30 and i <= 112:
+    # if i >= 30 and i <= 112:
+    if i >= 61 and i <= 78: # BraTS20_Training_003_t1ce.nii
         axial_slice = nii_data[:, :, i]
 
         image_8bits = cv2.normalize(axial_slice, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
@@ -202,22 +232,57 @@ for i in range(nii_data.shape[2]):
         mask2, F_u_v = filterImage(image_8bits, padded_image, H_u_v2)
 
         mask3, F_u_v = filterImage(image_8bits, padded_image, H_u_v3)
+
+        laplacian = cv2.Laplacian(image_8bits, cv2.CV_64F)
+        mask4 = np.uint8(np.absolute(laplacian))
         
         c = 1
 
         result1 = image_8bits + (c * mask1)
         result2 = image_8bits + (c * mask2)
         result3 = image_8bits + (c * mask3)
+        result4 = image_8bits + (c * mask4)
 
         result1 = cv2.normalize(result1, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
         result2 = cv2.normalize(result2, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
         result3 = cv2.normalize(result3, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+        result4 = cv2.normalize(result4, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
 
-        cv2.imshow("butterworthHighpassFilter", result1)
+        cv2.imshow("image_8bits", image_8bits)
 
-        cv2.imshow("gaussianHighpassFilter", result2)
+        # cv2.imshow("butterworthHighpassFilter", result1)
 
-        cv2.imshow("idealHighpassFilter", result3)
+        # cv2.imshow("gaussianHighpassFilter", result2)
+
+        # cv2.imshow("idealHighpassFilter", result3)
+
+        # cv2.imshow("laplacian", result4)
+
+        clahe = cv2.createCLAHE(clipLimit=2.1, tileGridSize=(12, 12))
+
+        clahe_image = clahe.apply(image_8bits)
+        clahe_image1 = clahe.apply(result1)
+        clahe_image2 = clahe.apply(result2)
+        clahe_image3 = clahe.apply(result3)
+
+        cv2.imshow("LHE butterworthHighpassFilter", clahe_image1)
+        cv2.imshow("LHE gaussianHighpassFilter", clahe_image2)
+        cv2.imshow("LHE idealHighpassFilter", clahe_image3)
+        cv2.imshow("LHE image_8bits", clahe_image)
+
+        print('max: ', np.max(clahe_image2))
+        print('min: ', np.min(clahe_image2))
+
+        # laplacian = cv2.Laplacian(clahe_image, cv2.CV_64F)
+        # mask4 = np.uint8(np.absolute(laplacian))
+        # result4 = cv2.normalize(result4, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+
+        # cv2.imshow("LHE laplacian", result4)
+
+        
+
+
+
 
         cv2.waitKey(0)
 
