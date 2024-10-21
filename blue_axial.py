@@ -20,7 +20,7 @@ image_path = r"C:\Users\leosn\Desktop\PIM\datasets\MICCAI_BraTS_2020_Data_Traini
 nii_file = nib.load(image_path)
 nii_data = nii_file.get_fdata()
 
-mask_mean_border = cv2.imread('mask_mean_axial_border.png', cv2.IMREAD_GRAYSCALE)
+mask_mean_border = cv2.imread('mask_mean_coronal_border.png', cv2.IMREAD_GRAYSCALE)
 
 slices = []
 
@@ -125,10 +125,10 @@ clahe = cv2.createCLAHE(clipLimit=2.1, tileGridSize=(12, 12))
 
 processed_images = []
 
-for i in range(nii_data.shape[2]):
+for i in range(nii_data.shape[1]):
 
-    if i >= 61 and i <= 78: # BraTS20_Training_003_t1ce.nii
-        axial_slice = nii_data[:, :, i]
+    if i >= 150 and i <= 170: # BraTS20_Training_003_t1ce.nii
+        axial_slice = nii_data[:, i, :]
 
         image_8bits = cv2.normalize(axial_slice, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
         image_8bits = cv2.rotate(image_8bits, cv2.ROTATE_90_COUNTERCLOCKWISE)
@@ -249,7 +249,112 @@ thresholded_region = cv2.threshold(region_of_interest, otsu_threshold_value, 255
 kernel = np.ones((3,3),np.uint8)
 erosion = cv2.erode(thresholded_region, kernel,iterations = 1)
 
-cv2.imshow('erosion axial', erosion)
+cv2.imshow('erosion coronal', erosion)
 
 cv2.waitKey(0)
 
+# opening = cv2.morphologyEx(mask_mean, cv2.MORPH_OPEN, np.ones((5, 5), np.uint8))
+# mask_mean = cv2.GaussianBlur(mask_mean, (7, 7) ,0)
+
+# edges = cv2.Canny(mask_mean, 50, 180)
+
+# cv2.imshow('edges', edges)
+
+# cv2.waitKey(0)
+
+# # Otsu's Thresholding
+# mask_non_zero_region = np.where(mask_mean > 0, 255, 0)
+# mask_non_zero_region = cv2.normalize(mask_non_zero_region, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+
+# non_uniform_region = cv2.bitwise_and(mask_mean, mask_mean, mask=mask_non_zero_region)
+# pixels = non_uniform_region[mask_non_zero_region == 255]
+
+# threshold = round(dip.otsuThresholding(pixels))
+
+# mask_otsu = np.where(mask_mean >= threshold, 255, 0)
+# mask_otsu = cv2.normalize(mask_otsu, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+
+# # Mean Centroid
+
+# mean_centroid_x, mean_centroid_y = getMeanCentroid(mask_mean)
+
+# # Filtering the countours using the median point
+# contours_drawn = []
+
+# for slice in processed_images:
+
+#     contours_slice, _ = cv2.findContours(slice, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+#     min_distance = 0
+
+#     best_countour = None
+#     best_centroid = None
+
+#     for countour in contours_slice:
+#         M = cv2.moments(countour)
+
+#         centroid_x, centroid_y = 0, 0
+
+#         if M["m00"] != 0:
+#             centroid_x = int(M["m10"] / M["m00"])
+#             centroid_y = int(M["m01"] / M["m00"])
+
+#         if centroid_x != 0 and centroid_y != 0:
+
+#             point1 = np.array([centroid_x, centroid_y])
+#             point2 = np.array([mean_centroid_x, mean_centroid_y])
+
+#             # Euclidean distance
+#             distance = np.abs(np.linalg.norm(point1 - point2))
+
+#             if distance < min_distance or min_distance == 0:
+#                 min_distance = distance
+#                 best_countour = countour
+#                 best_centroid = [centroid_x, centroid_y]
+
+#     area = cv2.contourArea(best_countour)
+
+#     # Pixel units
+#     if area >= 100:
+#         drawed_contours = np.zeros_like(slice)
+#         cv2.drawContours(drawed_contours, [best_countour], -1, 255, -1)
+#         contours_drawn.append([best_countour, drawed_contours, best_centroid, area])
+
+# contours_drawed = [contours[1] for contours in contours_drawn]
+
+# if len(contours_drawed) > 0:
+
+#     masks = np.stack(contours_drawed)
+#     frequency_matrix = np.zeros_like(mask_mean, dtype=np.int32)
+
+#     for mask in masks:
+#         frequency_matrix += (mask == 255).astype(int)
+
+#     plt.imshow(frequency_matrix, cmap='hot', interpolation='nearest')
+#     plt.colorbar(label="Frequency of 255")
+#     plt.title("Frequency Distribution of Pixel Value 255")
+#     plt.show()
+
+# image = np.ones_like(mask_mean)
+
+# def on_trackbar(val):
+#     pass
+
+# cv2.namedWindow('Image Window')
+
+# cv2.createTrackbar('Brightness', 'Image Window', 0, 100, on_trackbar)
+
+# while True:
+    
+#     brightness = cv2.getTrackbarPos('Brightness', 'Image Window')
+
+#     mask_result = np.where(frequency_matrix >= brightness, 255, 0)
+#     mask_result = cv2.normalize(mask_result, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+
+#     cv2.imshow('Image Window', mask_result)
+
+#     # Break the loop if the user presses the 'ESC' key
+#     if cv2.waitKey(1) & 0xFF == 27:  # ESC key
+#         break
+
+# cv2.destroyAllWindows()

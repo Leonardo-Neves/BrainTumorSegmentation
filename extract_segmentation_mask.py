@@ -14,24 +14,24 @@ image_segmentation_path = r"C:\Users\leosn\Desktop\PIM\datasets\MICCAI_BraTS_202
 nii_file = nib.load(image_path)
 nii_data = nii_file.get_fdata()
 
-for i in range(nii_data.shape[1]):
-    axial_slice = nii_data[:, i, :]
+for i in range(nii_data.shape[2]):
+    axial_slice = nii_data[:, :, i]
 
     axial_slice_8 = cv2.normalize(axial_slice, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
     axial_slice_8 = cv2.resize(axial_slice_8, (640, 640))
 
-    plt.imsave(f'test_folder/slice2/slice_{i}.png', axial_slice_8, cmap='gray')
+    plt.imsave(f'test_folder/slice/slice_{i}.png', axial_slice_8, cmap='gray')
 
 nii_segmentation_file = nib.load(image_segmentation_path)
 nii_segmentation_data = nii_segmentation_file.get_fdata()
 
-for i in range(nii_segmentation_data.shape[1]):
-    axial_slice = nii_segmentation_data[:, i, :]
+for i in range(nii_segmentation_data.shape[2]):
+    axial_slice = nii_segmentation_data[:, :, i]
 
     axial_slice_8 = cv2.normalize(axial_slice, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
     axial_slice_8 = cv2.resize(axial_slice_8, (640, 640))
 
     axial_slice_8 = np.where(axial_slice_8 > 0, 255, 0)
 
-    plt.imsave(f'test_folder/slice_segmentation2/slice_{i}.png', axial_slice_8, cmap='gray')
+    plt.imsave(f'test_folder/slice_segmentation/slice_{i}.png', axial_slice_8, cmap='gray')
 

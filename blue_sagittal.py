@@ -20,7 +20,7 @@ image_path = r"C:\Users\leosn\Desktop\PIM\datasets\MICCAI_BraTS_2020_Data_Traini
 nii_file = nib.load(image_path)
 nii_data = nii_file.get_fdata()
 
-mask_mean_border = cv2.imread('mask_mean_axial_border.png', cv2.IMREAD_GRAYSCALE)
+# mask_mean_border = cv2.imread('mask_mean_border.png', cv2.IMREAD_GRAYSCALE)
 
 slices = []
 
@@ -125,10 +125,10 @@ clahe = cv2.createCLAHE(clipLimit=2.1, tileGridSize=(12, 12))
 
 processed_images = []
 
-for i in range(nii_data.shape[2]):
+for i in range(nii_data.shape[0]):
 
-    if i >= 61 and i <= 78: # BraTS20_Training_003_t1ce.nii
-        axial_slice = nii_data[:, :, i]
+    if i >= 160 and i <= 178: # BraTS20_Training_003_t1ce.nii
+        axial_slice = nii_data[i, :, :]
 
         image_8bits = cv2.normalize(axial_slice, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
         image_8bits = cv2.rotate(image_8bits, cv2.ROTATE_90_COUNTERCLOCKWISE)
@@ -228,7 +228,7 @@ mask_mean = np.mean(processed_images, axis=0).astype(np.uint8)
 
 cv2.imshow('mask_mean', mask_mean)
 
-mask_mean_without_border = mask_mean - mask_mean_border
+mask_mean_without_border = mask_mean
 
 cv2.imshow('mask_mean_without_border', mask_mean_without_border)
 
@@ -249,7 +249,7 @@ thresholded_region = cv2.threshold(region_of_interest, otsu_threshold_value, 255
 kernel = np.ones((3,3),np.uint8)
 erosion = cv2.erode(thresholded_region, kernel,iterations = 1)
 
-cv2.imshow('erosion axial', erosion)
+cv2.imshow('erosion sagittal', erosion)
 
 cv2.waitKey(0)
 
