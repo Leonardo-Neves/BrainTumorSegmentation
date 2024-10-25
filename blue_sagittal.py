@@ -11,9 +11,11 @@ import mahotas
 
 from utils.digital_image_processing import DigitalImageProcessing
 from utils.frequency_domain import FrequencyDomain
+from utils.spartial_domain import SpartialDomain
 
 dip = DigitalImageProcessing()
 fd = FrequencyDomain()
+sd = SpartialDomain()
 
 image_path = r"C:\Users\leosn\Desktop\PIM\datasets\MICCAI_BraTS_2020_Data_Training\BraTS2020_TrainingData\MICCAI_BraTS2020_TrainingData\BraTS20_Training_003\BraTS20_Training_003_t1ce.nii"
 
@@ -243,13 +245,24 @@ cv2.drawContours(mask_non_zero_region, contours, -1, 255, -1)
 region_of_interest = cv2.bitwise_and(mask_mean_without_border, mask_mean_without_border, mask=mask_non_zero_region)
 roi_values = region_of_interest[region_of_interest > 0]
 
-otsu_threshold_value = cv2.threshold(roi_values, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[0]
-thresholded_region = cv2.threshold(region_of_interest, otsu_threshold_value, 255, cv2.THRESH_BINARY)[1]
+mask_leo = sd.leoThreshold(mask_mean_without_border, mask_non_zero_region, 17)
 
-kernel = np.ones((3,3),np.uint8)
-erosion = cv2.erode(thresholded_region, kernel,iterations = 1)
+cv2.imshow('mask_leo', mask_leo)
 
-cv2.imshow('erosion sagittal', erosion)
+# non_uniform_region = cv2.bitwise_and(mask_mean_without_border, mask_mean_without_border, mask=mask_non_zero_region)
+# pixels = non_uniform_region[mask_non_zero_region == 255]
+
+# unique, counts = np.unique(pixels, return_counts=True)
+# plt.bar(unique, counts)
+# plt.show()
+
+# otsu_threshold_value = cv2.threshold(roi_values, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[0]
+# thresholded_region = cv2.threshold(region_of_interest, otsu_threshold_value, 255, cv2.THRESH_BINARY)[1]
+
+# kernel = np.ones((3,3),np.uint8)
+# erosion = cv2.erode(thresholded_region, kernel,iterations = 1)
+
+# cv2.imshow('erosion sagittal', erosion)
 
 cv2.waitKey(0)
 

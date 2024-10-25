@@ -11,9 +11,11 @@ import mahotas
 
 from utils.digital_image_processing import DigitalImageProcessing
 from utils.frequency_domain import FrequencyDomain
+from utils.spartial_domain import SpartialDomain
 
 dip = DigitalImageProcessing()
 fd = FrequencyDomain()
+sd = SpartialDomain()
 
 image_path = r"C:\Users\leosn\Desktop\PIM\datasets\MICCAI_BraTS_2020_Data_Training\BraTS2020_TrainingData\MICCAI_BraTS2020_TrainingData\BraTS20_Training_003\BraTS20_Training_003_t1ce.nii"
 
@@ -211,18 +213,37 @@ for i in range(nii_data.shape[1]):
         sobel_combined = cv2.magnitude(sobel_x, sobel_y)
         sobel_combined = np.uint8(np.absolute(sobel_combined))
 
-        # Step 4: Threshold the Sobel output to create a binary image
+        # cv2.imshow('sobel_combined', sobel_combined)
+
         _, binary_image = cv2.threshold(sobel_combined, 50, 255, cv2.THRESH_BINARY)
+        
+        # cv2.imshow('binary_image', binary_image)
 
         # Close gaps
         kernel = np.ones((3, 3), np.uint8)
         closed_image = cv2.morphologyEx(binary_image, cv2.MORPH_CLOSE, kernel)
 
+
+        mask_non_zero_region = np.where(sobel_combined > 0, 255, 0)
+        mask_non_zero_region = cv2.normalize(mask_non_zero_region, None, 0, 255, cv2.NORM_MINMAX).astype(np.uint8)
+        contours, _ = cv2.findContours(mask_non_zero_region, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        mask_non_zero_region = np.zeros_like(sobel_combined)
+        cv2.drawContours(mask_non_zero_region, contours, -1, 255, -1)
+
+        region_of_interest = cv2.bitwise_and(sobel_combined, sobel_combined, mask=mask_non_zero_region)
+        roi_values = region_of_interest[region_of_interest > 0]
+
+        global_mean = np.mean(roi_values)
+
+        _, mask = cv2.threshold(sobel_combined, global_mean, 255, cv2.THRESH_BINARY)
+
+        # cv2.imshow('mask', mask)
+
         # cv2.imshow('closed_image', closed_image)
 
         # cv2.waitKey(0)
 
-        processed_images.append(closed_image)
+        processed_images.append(mask)
 
 mask_mean = np.mean(processed_images, axis=0).astype(np.uint8)
 
@@ -243,13 +264,24 @@ cv2.drawContours(mask_non_zero_region, contours, -1, 255, -1)
 region_of_interest = cv2.bitwise_and(mask_mean_without_border, mask_mean_without_border, mask=mask_non_zero_region)
 roi_values = region_of_interest[region_of_interest > 0]
 
-otsu_threshold_value = cv2.threshold(roi_values, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[0]
-thresholded_region = cv2.threshold(region_of_interest, otsu_threshold_value, 255, cv2.THRESH_BINARY)[1]
+mask_leo = sd.leoThreshold(mask_mean_without_border, mask_non_zero_region, 9)
 
-kernel = np.ones((3,3),np.uint8)
-erosion = cv2.erode(thresholded_region, kernel,iterations = 1)
+cv2.imshow('mask_leo', mask_leo)
 
-cv2.imshow('erosion coronal', erosion)
+# non_uniform_region = cv2.bitwise_and(mask_mean_without_border, mask_mean_without_border, mask=mask_non_zero_region)
+# pixels = non_uniform_region[mask_non_zero_region == 255]
+
+# unique, counts = np.unique(pixels, return_counts=True)
+# plt.bar(unique, counts)
+# plt.show()
+
+# otsu_threshold_value = cv2.threshold(roi_values, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[0]
+# thresholded_region = cv2.threshold(region_of_interest, otsu_threshold_value, 255, cv2.THRESH_BINARY)[1]
+
+# kernel = np.ones((3,3),np.uint8)
+# erosion = cv2.erode(thresholded_region, kernel,iterations = 1)
+
+# cv2.imshow('erosion coronal', erosion)
 
 cv2.waitKey(0)
 
