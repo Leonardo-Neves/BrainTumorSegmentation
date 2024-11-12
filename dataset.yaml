@@ -1,0 +1,10 @@
+path: C:\Users\leosn\Desktop\PIM\datasets\tumor_object_detection  # This is the base directory for your dataset
+
+# Train and validation image subdirectories
+train: images  # YOLO will look for images in '/dataset/images'
+val: images    # Typically, you'd have separate directories for train and val, but here it's the same
+
+
+nc: 1
+names:
+  0: tumor
