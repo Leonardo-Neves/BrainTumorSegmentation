@@ -1,4 +1,5 @@
 import matplotlib.pyplot as plt
+from ultralytics import YOLO
 import nibabel as nib
 import pandas as pd
 import numpy as np
@@ -12,6 +13,8 @@ from utils.spartial_domain import SpartialDomain
 dip = DigitalImageProcessing()
 fd = FrequencyDomain()
 sd = SpartialDomain()
+
+model = YOLO(r'C:\Users\leosn\Desktop\PIM\runs\obb\train11\weights\best.pt')
 
 def coronalSegmentation(image_path, initial_index, end_index):
 
@@ -362,6 +365,17 @@ coronal_contours_to_be_deleted = loadContours(r'C:\Users\leosn\Desktop\PIM\image
 
 axial_contours_to_be_deleted = loadContours(r'C:\Users\leosn\Desktop\PIM\images\contour\axial')
 
+def convertXYWHRToX1Y1X2Y2(xywhr):
+    x, y, w, h, r = xywhr[0], xywhr[1], xywhr[2], xywhr[3], xywhr[4]
+
+    x1 = x - w / 2
+    y1 = y - h / 2
+
+    x2 = x + w / 2
+    y2 = y + h / 2
+
+    return int(x1), int(y1), int(x2), int(y2)
+
 for folder_name in os.listdir(ROOT_PATH):
 
     image_path = os.path.join(ROOT_PATH, folder_name, f'{folder_name}_t1ce.nii')
@@ -383,17 +397,17 @@ for folder_name in os.listdir(ROOT_PATH):
 
     mask_segmentation_coronal, mask_mean_coronal = coronalSegmentation(image_path, row['Coronal_Initial'], row['Coronal_End'])
 
-    # mask_segmentation_axial, mask_mean_axial = axialSegmentation(image_path, row['Axial_Initial'], row['Axial_End'])
+    mask_segmentation_axial, mask_mean_axial = axialSegmentation(image_path, row['Axial_Initial'], row['Axial_End'])
 
     mask_segmentation_sagittal, mask_mean_sagittal = sagittalSegmentation(image_path, row['Sagittal_Initial'], row['Sagittal_End'])
 
-    cv2.imshow('mask_segmentation_coronal', mask_segmentation_coronal)
+    # cv2.imshow('mask_segmentation_coronal', mask_segmentation_coronal)
     # cv2.imshow('mask_segmentation_axial', mask_segmentation_axial)
-    cv2.imshow('mask_segmentation_sagittal', mask_segmentation_sagittal)
+    # cv2.imshow('mask_segmentation_sagittal', mask_segmentation_sagittal)
 
-    cv2.imshow('mask_mean_coronal', mask_mean_coronal)
+    # cv2.imshow('mask_mean_coronal', mask_mean_coronal)
     # cv2.imshow('mask_mean_axial', mask_mean_axial)
-    cv2.imshow('mask_mean_sagittal', mask_mean_sagittal)
+    # cv2.imshow('mask_mean_sagittal', mask_mean_sagittal)
 
     # cv2.waitKey(0)
 
@@ -401,98 +415,128 @@ for folder_name in os.listdir(ROOT_PATH):
     # cv2.imwrite(f'{folder_name}_t1ce_axial.png', mask_segmentation_axial)
     # cv2.imwrite(f'{folder_name}_t1ce_sagittal.png', mask_segmentation_sagittal)
 
+    mask_mean_coronal_rgb = cv2.cvtColor(mask_mean_coronal, cv2.COLOR_GRAY2RGB)
+    mask_mean_axial_rgb = cv2.cvtColor(mask_mean_axial, cv2.COLOR_GRAY2RGB)
+    mask_mean_sagittal_rgb = cv2.cvtColor(mask_mean_sagittal, cv2.COLOR_GRAY2RGB)
+
+    results = model([mask_mean_coronal_rgb, mask_mean_axial_rgb, mask_mean_sagittal_rgb], stream=True, imgsz=(640, 800))
+
+    boxes = [result.obb.xywhr.cpu().numpy()[0] for result in results]
+
+    x1_coronal, y1_coronal, x2_coronal, y2_coronal = convertXYWHRToX1Y1X2Y2(boxes[0])
+    x1_axial, y1_axial, x2_axial, y2_axial = convertXYWHRToX1Y1X2Y2(boxes[1])
+    x1_sagittal, y1_sagittal, x2_sagittal, y2_sagittal = convertXYWHRToX1Y1X2Y2(boxes[2])
+
     # ------------------------------- Extracting caracteristics from the masks -------------------------------
 
     contours_coronal, _ = cv2.findContours(mask_segmentation_coronal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    # contours_axial, _ = cv2.findContours(mask_segmentation_axial, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    contours_axial, _ = cv2.findContours(mask_segmentation_axial, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
     contours_sagittal, _ = cv2.findContours(mask_segmentation_sagittal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
 
-    similarities = []
+    mask = np.zeros_like(mask_mean_coronal)
 
     for i, contour_coronal in enumerate(contours_coronal):
-        for j, contour_sagittal in enumerate(contours_sagittal):
-            try:
-                area_contour_coronal = cv2.contourArea(contour_coronal)
-                area_contour_sagittal = cv2.contourArea(contour_sagittal)
 
-                similarity = cv2.matchShapes(contour_coronal, contour_sagittal, cv2.CONTOURS_MATCH_I1, 0.0)
+        M = cv2.moments(contour_coronal)
 
-                # Euclidean distance between two contours
-                M_coronal = cv2.moments(contour_coronal)
-                centroid_x_coronal, centroid_y_coronal = 0, 0
-                if M_coronal["m00"] != 0:
-                    centroid_x_coronal = int(M_coronal["m10"] / M_coronal["m00"])
-                    centroid_y_coronal = int(M_coronal["m01"] / M_coronal["m00"])
+        centroid_x, centroid_y = 0, 0
+        if M["m00"] != 0:
+            centroid_x = int(M["m10"] / M["m00"])
+            centroid_y = int(M["m01"] / M["m00"])
 
-                M_axial = cv2.moments(contour_sagittal)
-                centroid_x_sagittal, centroid_y_sagittal = 0, 0
-                if M_axial["m00"] != 0:
-                    centroid_x_sagittal = int(M_axial["m10"] / M_axial["m00"])
-                    centroid_y_sagittal = int(M_axial["m01"] / M_axial["m00"])
+        if centroid_x >= x1_coronal and centroid_x <= x2_coronal and centroid_y >= y1_coronal and centroid_y <= y2_coronal:
+            cv2.drawContours(mask, [contour_coronal], -1, 255, -1)
 
-                point1 = np.array([centroid_x_coronal, centroid_y_coronal])
-                point2 = np.array([centroid_x_sagittal, centroid_y_sagittal])
+    cv2.imshow('mask', mask)
 
-                distance = np.abs(np.linalg.norm(point2 - point1))
+    cv2.waitKey(0)
 
-                d = np.sqrt((centroid_x_coronal - centroid_x_sagittal) ** 2 + (centroid_y_coronal - centroid_y_sagittal) ** 2)
+    # similarities = []
 
-                x = np.sqrt((centroid_x_coronal - centroid_x_sagittal) ** 2)
-                y = np.sqrt((centroid_y_coronal - centroid_y_sagittal) ** 2)
+    # for i, contour_coronal in enumerate(contours_coronal):
+    #     for j, contour_sagittal in enumerate(contours_sagittal):
+    #         try:
+    #             area_contour_coronal = cv2.contourArea(contour_coronal)
+    #             area_contour_sagittal = cv2.contourArea(contour_sagittal)
 
-                similarities.append([similarity, i, j, area_contour_coronal, area_contour_sagittal, distance, d, x, y, np.abs(centroid_x_coronal - centroid_x_sagittal), np.abs(centroid_y_coronal - centroid_y_sagittal), centroid_x_coronal, centroid_y_coronal, centroid_x_sagittal, centroid_y_sagittal])
+    #             similarity = cv2.matchShapes(contour_coronal, contour_sagittal, cv2.CONTOURS_MATCH_I1, 0.0)
 
-            except:
-                pass
+    #             # Euclidean distance between two contours
+    #             M_coronal = cv2.moments(contour_coronal)
+    #             centroid_x_coronal, centroid_y_coronal = 0, 0
+    #             if M_coronal["m00"] != 0:
+    #                 centroid_x_coronal = int(M_coronal["m10"] / M_coronal["m00"])
+    #                 centroid_y_coronal = int(M_coronal["m01"] / M_coronal["m00"])
+
+    #             M_axial = cv2.moments(contour_sagittal)
+    #             centroid_x_sagittal, centroid_y_sagittal = 0, 0
+    #             if M_axial["m00"] != 0:
+    #                 centroid_x_sagittal = int(M_axial["m10"] / M_axial["m00"])
+    #                 centroid_y_sagittal = int(M_axial["m01"] / M_axial["m00"])
+
+    #             point1 = np.array([centroid_x_coronal, centroid_y_coronal])
+    #             point2 = np.array([centroid_x_sagittal, centroid_y_sagittal])
+
+    #             distance = np.abs(np.linalg.norm(point2 - point1))
+
+    #             d = np.sqrt((centroid_x_coronal - centroid_x_sagittal) ** 2 + (centroid_y_coronal - centroid_y_sagittal) ** 2)
+
+    #             x = np.sqrt((centroid_x_coronal - centroid_x_sagittal) ** 2)
+    #             y = np.sqrt((centroid_y_coronal - centroid_y_sagittal) ** 2)
+
+    #             similarities.append([similarity, i, j, area_contour_coronal, area_contour_sagittal, distance, d, x, y, np.abs(centroid_x_coronal - centroid_x_sagittal), np.abs(centroid_y_coronal - centroid_y_sagittal), centroid_x_coronal, centroid_y_coronal, centroid_x_sagittal, centroid_y_sagittal])
+
+    #         except:
+    #             pass
 
     # ----------------------- Filtering contours between coronal and sagittal -----------------------
 
-    dataframe_similarity_coronal_axial = pd.DataFrame(similarities, columns=['Similarity', 'Coronal', 'Sagittal', 'Coronal_Area', 'Sagittal_Area', 'Euclidian_Distance', 'Euclidian_Distance2', 'X', 'Y', 'X_Distance', 'Y_Distance', 'Coronal_X', 'Coronal_Y', 'Sagittal_X', 'Sagittal_Y'])
+    # dataframe_similarity_coronal_axial = pd.DataFrame(similarities, columns=['Similarity', 'Coronal', 'Sagittal', 'Coronal_Area', 'Sagittal_Area', 'Euclidian_Distance', 'Euclidian_Distance2', 'X', 'Y', 'X_Distance', 'Y_Distance', 'Coronal_X', 'Coronal_Y', 'Sagittal_X', 'Sagittal_Y'])
 
-    dataframe_similarity_coronal_axial = dataframe_similarity_coronal_axial.loc[(dataframe_similarity_coronal_axial['Coronal_Area'] != 0) & (dataframe_similarity_coronal_axial['Sagittal_Area'] != 0)]
+    # dataframe_similarity_coronal_axial = dataframe_similarity_coronal_axial.loc[(dataframe_similarity_coronal_axial['Coronal_Area'] != 0) & (dataframe_similarity_coronal_axial['Sagittal_Area'] != 0)]
 
-    sorted_df = dataframe_similarity_coronal_axial.sort_values(by=['Euclidian_Distance'], ascending=True)
+    # sorted_df = dataframe_similarity_coronal_axial.sort_values(by=['Euclidian_Distance'], ascending=True)
 
-    rows_area_above_100 = sorted_df[(sorted_df['Coronal_Area'] >= 100) & (sorted_df['Sagittal_Area'] >= 100)]
+    # rows_area_above_100 = sorted_df[(sorted_df['Coronal_Area'] >= 100) & (sorted_df['Sagittal_Area'] >= 100)]
 
-    filtered_df_coronal_sagittal = rows_area_above_100[rows_area_above_100['Euclidian_Distance'] <= 70]
+    # filtered_df_coronal_sagittal = rows_area_above_100[rows_area_above_100['Euclidian_Distance'] <= 70]
 
     # filtered_df_coronal_sagittal = filtered_df_coronal_sagittal[filtered_df_coronal_sagittal['Y_Distance'] == filtered_df_coronal_sagittal['Y_Distance'].min()]
 
-    print(filtered_df_coronal_sagittal)
+    # print(filtered_df_coronal_sagittal)
 
-    mask_coronal = np.zeros_like(mask_mean_coronal)
-    mask_sagittal = np.zeros_like(mask_mean_sagittal)
+    # mask_coronal = np.zeros_like(mask_mean_coronal)
+    # mask_sagittal = np.zeros_like(mask_mean_sagittal)
     
 
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
+    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
     
 
-    for i, row in filtered_df_coronal_sagittal.iterrows():
+    # for i, row in filtered_df_coronal_sagittal.iterrows():
 
-        cv2.drawContours(mask_coronal, [contours_coronal[int(row['Coronal'])]], -1, 255, -1)
-        mask_coronal = cv2.morphologyEx(mask_coronal, cv2.MORPH_CLOSE, kernel)
-        contours, _ = cv2.findContours(mask_coronal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cv2.drawContours(mask_coronal, contours, -1, 255, -1)
-        
-        
-
-        
-        cv2.drawContours(mask_sagittal, [contours_sagittal[int(row['Sagittal'])]], -1, 255, -1)
-        mask_sagittal = cv2.morphologyEx(mask_sagittal, cv2.MORPH_CLOSE, kernel)
-        contours, _ = cv2.findContours(mask_sagittal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-        cv2.drawContours(mask_sagittal, contours, -1, 255, -1)
+    #     cv2.drawContours(mask_coronal, [contours_coronal[int(row['Coronal'])]], -1, 255, -1)
+    #     mask_coronal = cv2.morphologyEx(mask_coronal, cv2.MORPH_CLOSE, kernel)
+    #     contours, _ = cv2.findContours(mask_coronal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    #     cv2.drawContours(mask_coronal, contours, -1, 255, -1)
         
         
 
-    mask_coronal = cv2.cvtColor(mask_coronal, cv2.COLOR_GRAY2BGR)
-    mask_sagittal = cv2.cvtColor(mask_sagittal, cv2.COLOR_GRAY2BGR)
+        
+    #     cv2.drawContours(mask_sagittal, [contours_sagittal[int(row['Sagittal'])]], -1, 255, -1)
+    #     mask_sagittal = cv2.morphologyEx(mask_sagittal, cv2.MORPH_CLOSE, kernel)
+    #     contours, _ = cv2.findContours(mask_sagittal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    #     cv2.drawContours(mask_sagittal, contours, -1, 255, -1)
+        
+        
 
-    for i, row in filtered_df_coronal_sagittal.iterrows():
-        cv2.putText(mask_coronal, f'EC: {str(row['Euclidian_Distance'])[:6]}', (int(row['Coronal_X']), int(row['Coronal_Y'])), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1, cv2.LINE_AA)
-        cv2.putText(mask_sagittal, f'EC: {str(row['Euclidian_Distance'])[:6]}', (int(row['Sagittal_X']), int(row['Sagittal_Y'])), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1, cv2.LINE_AA)
+    # mask_coronal = cv2.cvtColor(mask_coronal, cv2.COLOR_GRAY2BGR)
+    # mask_sagittal = cv2.cvtColor(mask_sagittal, cv2.COLOR_GRAY2BGR)
+
+    # for i, row in filtered_df_coronal_sagittal.iterrows():
+    #     cv2.putText(mask_coronal, f'EC: {str(row['Euclidian_Distance'])[:6]}', (int(row['Coronal_X']), int(row['Coronal_Y'])), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1, cv2.LINE_AA)
+    #     cv2.putText(mask_sagittal, f'EC: {str(row['Euclidian_Distance'])[:6]}', (int(row['Sagittal_X']), int(row['Sagittal_Y'])), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1, cv2.LINE_AA)
 
     # cv2.imshow('mask_coronal', mask_coronal)
 
