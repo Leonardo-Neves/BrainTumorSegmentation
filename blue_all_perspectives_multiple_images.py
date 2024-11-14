@@ -27,6 +27,8 @@ def coronalSegmentation(image_path, initial_index, end_index):
 
     processed_images = []
 
+    processed_images_leo_threshold = []
+
     cutoff_frequency = 40
     c = 1
 
@@ -48,6 +50,16 @@ def coronalSegmentation(image_path, initial_index, end_index):
 
             # Adaptive Histogram Equalization
             image_8bits_ahe = clahe.apply(image_8bits_filtered_gaussian)
+
+            # Leo Thresholding
+            mask_non_zero_region = np.where(image_8bits_ahe > 0, 255, 0).astype(np.uint8)
+
+            masks = []
+
+            for i in [19, 21, 23, 25, 27, 29, 31, 33, 35, 37]:
+                masks.append(sd.leoThreshold2(image_8bits_ahe, mask_non_zero_region, i))
+
+            mask_mean_leo_threshold = np.mean(masks, axis=0).astype(np.uint8)
 
             # Segmentation using Edge Detection
             sobel_x = cv2.Sobel(image_8bits_ahe, cv2.CV_64F, 1, 0, ksize=3)
@@ -76,6 +88,10 @@ def coronalSegmentation(image_path, initial_index, end_index):
 
             processed_images.append(mask)
 
+            processed_images_leo_threshold.append(mask_mean_leo_threshold)
+
+    mask_mean_leo = np.mean(processed_images_leo_threshold, axis=0).astype(np.uint8)
+
     mask_mean = np.mean(processed_images, axis=0).astype(np.uint8)
 
     mask_non_zero_region = np.where(mask_mean > 0, 255, 0).astype(np.uint8)
@@ -95,7 +111,7 @@ def coronalSegmentation(image_path, initial_index, end_index):
     for i in [19, 21, 23, 25, 27, 29, 31, 33, 35, 37]:
     # for i in [3, 7, 15, 19, 23, 29, 35, 41, 47, 53]:
     # for i in [3, 5, 7, 9, 11, 13]:
-        masks.append(sd.leoThreshold(mask_mean_without_border, mask_non_zero_region, i))
+        masks.append(sd.leoThreshold2(mask_mean_without_border, mask_non_zero_region, i))
 
     mask_mean_leo_threshold = np.mean(masks, axis=0).astype(np.uint8)
 
@@ -128,7 +144,7 @@ def coronalSegmentation(image_path, initial_index, end_index):
 
     # dilation = cv2.dilate(erosion, kernel, iterations = 1)
 
-    return mask_otsu, mask_mean
+    return mask_otsu, mask_mean, mask_mean_leo
 
 def axialSegmentation(image_path, initial_index, end_index):
 
@@ -143,6 +159,8 @@ def axialSegmentation(image_path, initial_index, end_index):
     clahe = cv2.createCLAHE(clipLimit=2.1, tileGridSize=(12, 12))
 
     processed_images = []
+
+    processed_images_leo_threshold = []
 
     for i in range(nii_data.shape[2]):
 
@@ -163,6 +181,16 @@ def axialSegmentation(image_path, initial_index, end_index):
             # Adaptive Histogram Equalization
             image_8bits_ahe = clahe.apply(image_8bits_filtered_gaussian)
 
+            # Leo Thresholding
+            mask_non_zero_region = np.where(image_8bits_ahe > 0, 255, 0).astype(np.uint8)
+
+            masks = []
+
+            for i in [19, 21, 23, 25, 27, 29, 31, 33, 35, 37]:
+                masks.append(sd.leoThreshold2(image_8bits_ahe, mask_non_zero_region, i))
+
+            mask_mean_leo_threshold = np.mean(masks, axis=0).astype(np.uint8)
+
             # Segmentation using Edge Detection
             sobel_x = cv2.Sobel(image_8bits_ahe, cv2.CV_64F, 1, 0, ksize=3)
             sobel_y = cv2.Sobel(image_8bits_ahe, cv2.CV_64F, 0, 1, ksize=3)
@@ -190,6 +218,10 @@ def axialSegmentation(image_path, initial_index, end_index):
 
             processed_images.append(mask)
 
+            processed_images_leo_threshold.append(mask_mean_leo_threshold)
+
+    mask_mean_leo = np.mean(processed_images_leo_threshold, axis=0).astype(np.uint8)
+
     mask_mean = np.mean(processed_images, axis=0).astype(np.uint8)
 
     mask_non_zero_region = np.where(mask_mean > 0, 255, 0).astype(np.uint8)
@@ -207,7 +239,7 @@ def axialSegmentation(image_path, initial_index, end_index):
     masks = []
 
     for i in [3, 5, 7, 9, 11, 13, 15, 17, 19, 21]:
-        masks.append(sd.leoThreshold(mask_mean_without_border, mask_non_zero_region, i))
+        masks.append(sd.leoThreshold2(mask_mean_without_border, mask_non_zero_region, i))
 
     mask_mean_leo_threshold = np.mean(masks, axis=0).astype(np.uint8)
     
@@ -233,7 +265,7 @@ def axialSegmentation(image_path, initial_index, end_index):
 
     # dilation = cv2.dilate(erosion, kernel, iterations = 1)
 
-    return mask_otsu, mask_mean
+    return mask_otsu, mask_mean, mask_mean_leo
 
 def sagittalSegmentation(image_path, initial_index, end_index):
 
@@ -248,6 +280,8 @@ def sagittalSegmentation(image_path, initial_index, end_index):
     clahe = cv2.createCLAHE(clipLimit=2.1, tileGridSize=(12, 12))
 
     processed_images = []
+
+    processed_images_leo_threshold = []
 
     for i in range(nii_data.shape[0]):
 
@@ -268,6 +302,16 @@ def sagittalSegmentation(image_path, initial_index, end_index):
             # Adaptive Histogram Equalization
             image_8bits_ahe = clahe.apply(image_8bits_filtered_gaussian)
 
+            # Leo Thresholding
+            mask_non_zero_region = np.where(image_8bits_ahe > 0, 255, 0).astype(np.uint8)
+
+            masks = []
+
+            for i in [19, 21, 23, 25, 27, 29, 31, 33, 35, 37]:
+                masks.append(sd.leoThreshold2(image_8bits_ahe, mask_non_zero_region, i))
+
+            mask_mean_leo_threshold = np.mean(masks, axis=0).astype(np.uint8)
+
             # Segmentation using Edge Detection
             sobel_x = cv2.Sobel(image_8bits_ahe, cv2.CV_64F, 1, 0, ksize=3)
             sobel_y = cv2.Sobel(image_8bits_ahe, cv2.CV_64F, 0, 1, ksize=3)
@@ -295,6 +339,10 @@ def sagittalSegmentation(image_path, initial_index, end_index):
 
             processed_images.append(mask)
 
+            processed_images_leo_threshold.append(mask_mean_leo_threshold)
+
+    mask_mean_leo = np.mean(processed_images_leo_threshold, axis=0).astype(np.uint8)
+
     mask_mean = np.mean(processed_images, axis=0).astype(np.uint8)
 
     mask_non_zero_region = np.where(mask_mean > 0, 255, 0).astype(np.uint8)
@@ -312,7 +360,7 @@ def sagittalSegmentation(image_path, initial_index, end_index):
     masks = []
 
     for i in [3, 5, 7, 9, 11, 13, 15, 17, 19, 21]:
-        masks.append(sd.leoThreshold(mask_mean_without_border, mask_non_zero_region, i))
+        masks.append(sd.leoThreshold2(mask_mean_without_border, mask_non_zero_region, i))
 
     mask_mean_leo_threshold = np.mean(masks, axis=0).astype(np.uint8)
     
@@ -338,7 +386,7 @@ def sagittalSegmentation(image_path, initial_index, end_index):
 
     # dilation = cv2.dilate(erosion, kernel, iterations = 1)
 
-    return mask_otsu, mask_mean
+    return mask_otsu, mask_mean, mask_mean_leo
 
 def loadContours(path):
 
@@ -376,6 +424,46 @@ def convertXYWHRToX1Y1X2Y2(xywhr):
 
     return int(x1), int(y1), int(x2), int(y2)
 
+def convertXYWHRToX1Y1X2Y2X3Y3X4Y4(xywhr):
+    x, y, w, h, r = xywhr[0], xywhr[1], xywhr[2], xywhr[3], xywhr[4]
+
+    x1, y1 = int(x - (w / 2)), int(y - (h / 2))
+    x2, y2 = int(x + (w / 2)), int(y - (h / 2))
+    x3, y3 = int(x + (w / 2)), int(y + (h / 2))
+    x4, y4 = int(x - (w / 2)), int(y + (h / 2))
+
+    return int(x1), int(y1), int(x2), int(y2), int(x3), int(y3), int(x4), int(y4)
+
+def getMaskBasedOnBoundingBoxPosition(mask_segmentation, mask_mean_leo_thresholding, box):
+
+    x1, y1, x2, y2, x3, y3, x4, y4 = convertXYWHRToX1Y1X2Y2X3Y3X4Y4(box)
+
+    contours, _ = cv2.findContours(mask_segmentation, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+    mask = np.zeros_like(mask_segmentation)
+
+    for i, contour in enumerate(contours):
+
+        M = cv2.moments(contour)
+
+        centroid_x, centroid_y = 0, 0
+        if M["m00"] != 0:
+            centroid_x = int(M["m10"] / M["m00"])
+            centroid_y = int(M["m01"] / M["m00"])
+
+        if centroid_x >= x1 and centroid_x <= x3 and centroid_y >= y1 and centroid_y <= y3:
+            cv2.drawContours(mask, [contour], -1, 255, -1)
+
+    ret3, mask_otsu = cv2.threshold(mask_mean_leo_thresholding[y1:y4, x1:x2], 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+
+    crop = np.sum([mask[y1:y4, x1:x2], mask_otsu], axis=0)
+
+    crop = np.where(crop > 255, 255, crop).astype(np.uint8)
+
+    mask[y1:y4, x1:x2] = crop
+
+    return mask
+
 for folder_name in os.listdir(ROOT_PATH):
 
     image_path = os.path.join(ROOT_PATH, folder_name, f'{folder_name}_t1ce.nii')
@@ -395,11 +483,11 @@ for folder_name in os.listdir(ROOT_PATH):
 
     # ------------------------------- Segmentation section -------------------------------
 
-    mask_segmentation_coronal, mask_mean_coronal = coronalSegmentation(image_path, row['Coronal_Initial'], row['Coronal_End'])
+    mask_segmentation_coronal, mask_mean_coronal, mask_mean_leo_thresholding_coronal = coronalSegmentation(image_path, row['Coronal_Initial'], row['Coronal_End'])
 
-    mask_segmentation_axial, mask_mean_axial = axialSegmentation(image_path, row['Axial_Initial'], row['Axial_End'])
+    mask_segmentation_axial, mask_mean_axial, mask_mean_leo_thresholding_axial = axialSegmentation(image_path, row['Axial_Initial'], row['Axial_End'])
 
-    mask_segmentation_sagittal, mask_mean_sagittal = sagittalSegmentation(image_path, row['Sagittal_Initial'], row['Sagittal_End'])
+    mask_segmentation_sagittal, mask_mean_sagittal, mask_mean_leo_thresholding_sagittal = sagittalSegmentation(image_path, row['Sagittal_Initial'], row['Sagittal_End'])
 
     # cv2.imshow('mask_segmentation_coronal', mask_segmentation_coronal)
     # cv2.imshow('mask_segmentation_axial', mask_segmentation_axial)
@@ -421,221 +509,18 @@ for folder_name in os.listdir(ROOT_PATH):
 
     results = model([mask_mean_coronal_rgb, mask_mean_axial_rgb, mask_mean_sagittal_rgb], stream=True, imgsz=(640, 800))
 
-    boxes = [result.obb.xywhr.cpu().numpy()[0] for result in results]
+    boxes = [result.obb.xywhr.cpu().numpy()[0] for result in results if len(result.obb.xywhr) > 0]
 
-    x1_coronal, y1_coronal, x2_coronal, y2_coronal = convertXYWHRToX1Y1X2Y2(boxes[0])
-    x1_axial, y1_axial, x2_axial, y2_axial = convertXYWHRToX1Y1X2Y2(boxes[1])
-    x1_sagittal, y1_sagittal, x2_sagittal, y2_sagittal = convertXYWHRToX1Y1X2Y2(boxes[2])
+   
+    if len(boxes) > 0:
 
-    # ------------------------------- Extracting caracteristics from the masks -------------------------------
+        mask = getMaskBasedOnBoundingBoxPosition(mask_segmentation_coronal, mask_mean_leo_thresholding_coronal, boxes[0])
 
-    contours_coronal, _ = cv2.findContours(mask_segmentation_coronal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    contours_axial, _ = cv2.findContours(mask_segmentation_axial, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    contours_sagittal, _ = cv2.findContours(mask_segmentation_sagittal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-    mask = np.zeros_like(mask_mean_coronal)
-
-    for i, contour_coronal in enumerate(contours_coronal):
-
-        M = cv2.moments(contour_coronal)
-
-        centroid_x, centroid_y = 0, 0
-        if M["m00"] != 0:
-            centroid_x = int(M["m10"] / M["m00"])
-            centroid_y = int(M["m01"] / M["m00"])
-
-        if centroid_x >= x1_coronal and centroid_x <= x2_coronal and centroid_y >= y1_coronal and centroid_y <= y2_coronal:
-            cv2.drawContours(mask, [contour_coronal], -1, 255, -1)
-
-    cv2.imshow('mask', mask)
+        cv2.imshow('mask', mask)
+    
 
     cv2.waitKey(0)
 
-    # similarities = []
-
-    # for i, contour_coronal in enumerate(contours_coronal):
-    #     for j, contour_sagittal in enumerate(contours_sagittal):
-    #         try:
-    #             area_contour_coronal = cv2.contourArea(contour_coronal)
-    #             area_contour_sagittal = cv2.contourArea(contour_sagittal)
-
-    #             similarity = cv2.matchShapes(contour_coronal, contour_sagittal, cv2.CONTOURS_MATCH_I1, 0.0)
-
-    #             # Euclidean distance between two contours
-    #             M_coronal = cv2.moments(contour_coronal)
-    #             centroid_x_coronal, centroid_y_coronal = 0, 0
-    #             if M_coronal["m00"] != 0:
-    #                 centroid_x_coronal = int(M_coronal["m10"] / M_coronal["m00"])
-    #                 centroid_y_coronal = int(M_coronal["m01"] / M_coronal["m00"])
-
-    #             M_axial = cv2.moments(contour_sagittal)
-    #             centroid_x_sagittal, centroid_y_sagittal = 0, 0
-    #             if M_axial["m00"] != 0:
-    #                 centroid_x_sagittal = int(M_axial["m10"] / M_axial["m00"])
-    #                 centroid_y_sagittal = int(M_axial["m01"] / M_axial["m00"])
-
-    #             point1 = np.array([centroid_x_coronal, centroid_y_coronal])
-    #             point2 = np.array([centroid_x_sagittal, centroid_y_sagittal])
-
-    #             distance = np.abs(np.linalg.norm(point2 - point1))
-
-    #             d = np.sqrt((centroid_x_coronal - centroid_x_sagittal) ** 2 + (centroid_y_coronal - centroid_y_sagittal) ** 2)
-
-    #             x = np.sqrt((centroid_x_coronal - centroid_x_sagittal) ** 2)
-    #             y = np.sqrt((centroid_y_coronal - centroid_y_sagittal) ** 2)
-
-    #             similarities.append([similarity, i, j, area_contour_coronal, area_contour_sagittal, distance, d, x, y, np.abs(centroid_x_coronal - centroid_x_sagittal), np.abs(centroid_y_coronal - centroid_y_sagittal), centroid_x_coronal, centroid_y_coronal, centroid_x_sagittal, centroid_y_sagittal])
-
-    #         except:
-    #             pass
-
-    # ----------------------- Filtering contours between coronal and sagittal -----------------------
-
-    # dataframe_similarity_coronal_axial = pd.DataFrame(similarities, columns=['Similarity', 'Coronal', 'Sagittal', 'Coronal_Area', 'Sagittal_Area', 'Euclidian_Distance', 'Euclidian_Distance2', 'X', 'Y', 'X_Distance', 'Y_Distance', 'Coronal_X', 'Coronal_Y', 'Sagittal_X', 'Sagittal_Y'])
-
-    # dataframe_similarity_coronal_axial = dataframe_similarity_coronal_axial.loc[(dataframe_similarity_coronal_axial['Coronal_Area'] != 0) & (dataframe_similarity_coronal_axial['Sagittal_Area'] != 0)]
-
-    # sorted_df = dataframe_similarity_coronal_axial.sort_values(by=['Euclidian_Distance'], ascending=True)
-
-    # rows_area_above_100 = sorted_df[(sorted_df['Coronal_Area'] >= 100) & (sorted_df['Sagittal_Area'] >= 100)]
-
-    # filtered_df_coronal_sagittal = rows_area_above_100[rows_area_above_100['Euclidian_Distance'] <= 70]
-
-    # filtered_df_coronal_sagittal = filtered_df_coronal_sagittal[filtered_df_coronal_sagittal['Y_Distance'] == filtered_df_coronal_sagittal['Y_Distance'].min()]
-
-    # print(filtered_df_coronal_sagittal)
-
-    # mask_coronal = np.zeros_like(mask_mean_coronal)
-    # mask_sagittal = np.zeros_like(mask_mean_sagittal)
-    
-
-    # kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3))
-    
-
-    # for i, row in filtered_df_coronal_sagittal.iterrows():
-
-    #     cv2.drawContours(mask_coronal, [contours_coronal[int(row['Coronal'])]], -1, 255, -1)
-    #     mask_coronal = cv2.morphologyEx(mask_coronal, cv2.MORPH_CLOSE, kernel)
-    #     contours, _ = cv2.findContours(mask_coronal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    #     cv2.drawContours(mask_coronal, contours, -1, 255, -1)
-        
-        
-
-        
-    #     cv2.drawContours(mask_sagittal, [contours_sagittal[int(row['Sagittal'])]], -1, 255, -1)
-    #     mask_sagittal = cv2.morphologyEx(mask_sagittal, cv2.MORPH_CLOSE, kernel)
-    #     contours, _ = cv2.findContours(mask_sagittal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    #     cv2.drawContours(mask_sagittal, contours, -1, 255, -1)
-        
-        
-
-    # mask_coronal = cv2.cvtColor(mask_coronal, cv2.COLOR_GRAY2BGR)
-    # mask_sagittal = cv2.cvtColor(mask_sagittal, cv2.COLOR_GRAY2BGR)
-
-    # for i, row in filtered_df_coronal_sagittal.iterrows():
-    #     cv2.putText(mask_coronal, f'EC: {str(row['Euclidian_Distance'])[:6]}', (int(row['Coronal_X']), int(row['Coronal_Y'])), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1, cv2.LINE_AA)
-    #     cv2.putText(mask_sagittal, f'EC: {str(row['Euclidian_Distance'])[:6]}', (int(row['Sagittal_X']), int(row['Sagittal_Y'])), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 0), 1, cv2.LINE_AA)
-
-    # cv2.imshow('mask_coronal', mask_coronal)
-
-    # cv2.imshow('mask_sagittal', mask_sagittal)
-
-    # plt.show()
-
-    cv2.waitKey(0)
-
-    # break
-
-    # ----------------------- Filtering contours between coronal and axial -----------------------
-
-    # filtered_df_coronal_axial = None
-
-    # print(filtered_df_coronal_sagittal)
-
-    # print(dataframe_similarity_coronal_axial)
-
-    # if not filtered_df_coronal_sagittal.empty and filtered_df_coronal_sagittal.shape[0] > 0:
-        
-    #     first_row = filtered_df_coronal_sagittal.iloc[0]
-
-    #     point2 = np.array([first_row['Coronal_X'], first_row['Coronal_Y']])
-
-    #     caracteristics = []
-
-    #     for i, contour_axial in enumerate(contours_axial):
-    #         try:
-    #             # Euclidean distance between two contours
-    #             M_axial = cv2.moments(contour_axial)
-    #             centroid_x_axial, centroid_y_axial = 0, 0
-    #             if M_coronal["m00"] != 0:
-    #                 centroid_x_axial = int(M_axial["m10"] / M_axial["m00"])
-    #                 centroid_y_axial = int(M_axial["m01"] / M_axial["m00"])
-
-    #             if centroid_x_axial != 0 and centroid_y_axial != 0:
-
-    #                 point1 = np.array([centroid_x_axial, centroid_y_axial])
-
-    #                 delta = point2 - point1
-    #                 angle_radians = np.arctan2(delta[1], delta[0])
-    #                 angle_degrees = np.degrees(angle_radians)
-    #                 angle_degrees = angle_degrees % 360
-
-    #                 area_contour_axial = cv2.contourArea(contour_axial)
-    #                 area_contour_coronal = cv2.contourArea(contours_coronal[int(first_row['Coronal'])])
-
-    #                 similarity = cv2.matchShapes(contours_coronal[int(first_row['Coronal'])], contour_axial, cv2.CONTOURS_MATCH_I1, 0.0)
-
-    #                 caracteristics.append([int(first_row['Coronal']), i, angle_degrees, centroid_x_axial, centroid_y_axial, similarity, area_contour_axial, area_contour_coronal])
-    #         except Exception as e:
-    #             # print(e)
-    #             pass
-
-    #     dataframe_angle_axial_coronal = pd.DataFrame(caracteristics, columns=['Coronal', 'Axial', 'Angle', 'Axial_X', 'Axial_Y', 'Similarity', 'Axial_Area', 'Coronal_Area'])
-
-    #     # Filter by max area
-    #     sorted_df = dataframe_angle_axial_coronal.sort_values(by=['Coronal_Area', 'Axial_Area'], ascending=False)
-    #     first_rows = sorted_df.head(10)
-
-    #     # Filter by differences between areas
-    #     first_rows['Difference_Areas'] = np.where(first_rows['Coronal_Area'] >= first_rows['Axial_Area'], first_rows['Coronal_Area'] / first_rows['Axial_Area'], first_rows['Axial_Area'] / first_rows['Coronal_Area'])
-    #     first_rows = first_rows[first_rows['Difference_Areas'] <= 5]
-
-    #     # Filter by angle
-    #     filtered_df_coronal_axial = first_rows[(first_rows['Angle'] >= 85) & (first_rows['Angle'] <= 95)]
-
-    #     # Adjustment on the shape of the countour
-    #     first_row_filtered_df_coronal_sagittal = filtered_df_coronal_sagittal.iloc[0]
-    #     first_row_filtered_df_coronal_axial = filtered_df_coronal_axial.iloc[0]
-
-    #     kernel = np.ones((3, 3), np.uint8)
-
-    #     mask_coronal = np.zeros_like(mask_mean_coronal)
-    #     cv2.drawContours(mask_coronal, [contours_coronal[int(first_row_filtered_df_coronal_sagittal['Coronal'])]], -1, 255, -1)
-    #     mask_coronal = cv2.morphologyEx(mask_coronal, cv2.MORPH_CLOSE, kernel)
-    #     contours, _ = cv2.findContours(mask_coronal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    #     cv2.drawContours(mask_coronal, contours, -1, 255, -1)
-
-    #     mask_axial = np.zeros_like(mask_mean_axial)
-    #     cv2.drawContours(mask_axial, [contours_axial[int(first_row_filtered_df_coronal_axial['Axial'])]], -1, 255, -1)
-    #     mask_axial = cv2.morphologyEx(mask_axial, cv2.MORPH_CLOSE, kernel)
-    #     contours, _ = cv2.findContours(mask_axial, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    #     cv2.drawContours(mask_axial, contours, -1, 255, -1)
-
-    #     mask_sagittal = np.zeros_like(mask_mean_sagittal)
-    #     cv2.drawContours(mask_sagittal, [contours_sagittal[int(first_row_filtered_df_coronal_sagittal['Sagittal'])]], -1, 255, -1)
-    #     mask_sagittal = cv2.morphologyEx(mask_sagittal, cv2.MORPH_CLOSE, kernel)
-    #     contours, _ = cv2.findContours(mask_sagittal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    #     cv2.drawContours(mask_sagittal, contours, -1, 255, -1)
-
-    #     cv2.imshow('mask_coronal', mask_coronal)
-
-    #     cv2.imshow('mask_axial', mask_axial)
-
-    #     cv2.imshow('mask_sagittal', mask_sagittal)
-
-    #     cv2.waitKey(0)
 
         
 

@@ -174,8 +174,6 @@ for folder_name in os.listdir(ROOT_PATH):
     # Selecting the row to the index of the image
     image_index = int(folder_name.split('_')[-1])
 
-
-
     dataframe_slices_filtered = dataframe_slices.loc[dataframe_slices['Index'] == image_index]
 
     row = dataframe_slices_filtered.iloc[0]
