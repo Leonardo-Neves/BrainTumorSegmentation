@@ -11,8 +11,11 @@ class SpartialDomain:
 
         global_mean = np.mean(roi_values)
         global_std = np.std(roi_values)
-
+        
         sides = int((kernel_size - 1) / 2)
+
+        global_i = 0
+        global_j = 0
 
         padded_image = np.pad(image, pad_width=sides, mode='constant', constant_values=0)
 
@@ -24,16 +27,26 @@ class SpartialDomain:
                 if neighbor_mean > global_mean:
                     global_mean = neighbor_mean
                     global_std = np.std(neighbor)
+                    global_i = i
+                    global_j = j
 
         print('1- global_mean', global_mean)
         print('1- global_std', global_std)
+        print('1- global_i', global_i)
+        print('1- global_j', global_j)
 
         return np.where((image >= (global_mean - global_std)) & (image <= (global_mean + global_std)), 255, 0).astype(np.uint8)
 
 
     def leoThreshold2(self, image, mask_image, kernel_size=3):
         
+        image = image.astype(np.float32)
         mean = cv2.blur(image, (kernel_size, kernel_size))
+
+        # mean = cv2.boxFilter(image, -1, (kernel_size, kernel_size))
+
+        # kernel = np.ones((kernel_size, kernel_size), np.float32) / (kernel_size * kernel_size)
+        # mean = cv2.filter2D(image, -1, kernel)
 
         squared_image = image ** 2
         mean_of_squares = cv2.blur(squared_image, (kernel_size, kernel_size))
@@ -42,11 +55,23 @@ class SpartialDomain:
 
         i, j = np.unravel_index(np.argmax(mean), mean.shape)
 
-        global_mean = np.max(mean)
-        global_std = std_dev[i, j]
+        i += int(kernel_size / 3) if kernel_size / 3 == 1 else int(round(kernel_size / 3) + 1)
+        j += int(kernel_size / 3) if kernel_size / 3 == 1 else int(round(kernel_size / 3) + 1)
 
-        print('2- global_mean', global_mean)
-        print('2- global_std', global_std)
+        global_mean = np.max(mean)
+
+        sides = int((kernel_size - 1) / 2)
+
+        padded_image = np.pad(image, pad_width=sides, mode='constant', constant_values=0)
+
+        neighbor = np.array(padded_image[i-sides:i+(sides + 1), j-sides:j+(sides + 1)])
+
+        global_std = np.std(neighbor)
+
+        # print('2- global_mean', global_mean)
+        # print('2- global_std', global_std)
+        # print('2- i', i)
+        # print('2- j', j)
 
         return np.where((image >= global_mean - global_std) & (image <= (global_mean + global_std)), 255, 0).astype(np.uint8)
     
