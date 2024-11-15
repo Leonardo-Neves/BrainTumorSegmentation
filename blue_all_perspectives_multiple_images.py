@@ -476,10 +476,7 @@ for folder_name in os.listdir(ROOT_PATH):
 
     image_path = os.path.join(ROOT_PATH, folder_name, f'{folder_name}_t1ce.nii')
 
-    # Selecting the row to the index of the image
-    image_index = int(folder_name.split('_')[-1])
-
-    dataframe_slices_filtered = dataframe_slices.loc[dataframe_slices['Index'] == image_index]
+    dataframe_slices_filtered = dataframe_slices.loc[dataframe_slices['Folder'] == folder_name]
 
     row = dataframe_slices_filtered.iloc[0]
 
