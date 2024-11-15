@@ -407,7 +407,11 @@ def loadContours(path):
 
 ROOT_PATH = r'C:\Users\leosn\Desktop\PIM\datasets\MICCAI_BraTS_2020_Data_Training\BraTS2020_TrainingData\MICCAI_BraTS2020_TrainingData'
 
-dataframe_slices = pd.read_excel('slices.xlsx').dropna()
+ORIGINAL_SEGMENTATION_MASKS_OVERPOSED = r'C:\Users\leosn\Desktop\PIM\datasets\original_segmentation_mask_overposed'
+
+OUTPUT_SEGMENTATION_PATH = r'C:\Users\leosn\Desktop\PIM\datasets\results_segmentation'
+
+dataframe_slices = pd.read_csv('ellipses_indexes_mask_segmentation.csv', sep=';')
 
 coronal_contours_to_be_deleted = loadContours(r'C:\Users\leosn\Desktop\PIM\images\contour\coronal')
 
@@ -464,14 +468,16 @@ def getMaskBasedOnBoundingBoxPosition(mask_segmentation, mask_mean_leo_threshold
 
     return mask
 
+dataframe = []
+
 for folder_name in os.listdir(ROOT_PATH):
+
+    print(folder_name)
 
     image_path = os.path.join(ROOT_PATH, folder_name, f'{folder_name}_t1ce.nii')
 
     # Selecting the row to the index of the image
     image_index = int(folder_name.split('_')[-1])
-
-
 
     dataframe_slices_filtered = dataframe_slices.loc[dataframe_slices['Index'] == image_index]
 
@@ -481,13 +487,19 @@ for folder_name in os.listdir(ROOT_PATH):
         print(1)
         break
 
+    # ------------------------------- Loading Original Segmentation Masks -------------------------------
+
+    original_mask_coronal = cv2.imread(os.path.join(ORIGINAL_SEGMENTATION_MASKS_OVERPOSED, folder_name, f'{folder_name}_coronal.png'), cv2.IMREAD_GRAYSCALE)
+    original_mask_axial = cv2.imread(os.path.join(ORIGINAL_SEGMENTATION_MASKS_OVERPOSED, folder_name, f'{folder_name}_axial.png'), cv2.IMREAD_GRAYSCALE)
+    original_mask_sagittal = cv2.imread(os.path.join(ORIGINAL_SEGMENTATION_MASKS_OVERPOSED, folder_name, f'{folder_name}_sagittal.png'), cv2.IMREAD_GRAYSCALE)
+
     # ------------------------------- Segmentation section -------------------------------
 
-    mask_segmentation_coronal, mask_mean_coronal, mask_mean_leo_thresholding_coronal = coronalSegmentation(image_path, row['Coronal_Initial'], row['Coronal_End'])
+    mask_segmentation_coronal, mask_mean_coronal, mask_mean_leo_thresholding_coronal = coronalSegmentation(image_path, row['Coronal_Initial_Index'], row['Coronal_End_Index'])
 
-    mask_segmentation_axial, mask_mean_axial, mask_mean_leo_thresholding_axial = axialSegmentation(image_path, row['Axial_Initial'], row['Axial_End'])
+    mask_segmentation_axial, mask_mean_axial, mask_mean_leo_thresholding_axial = axialSegmentation(image_path, row['Axial_Initial_Index'], row['Axial_End_Index'])
 
-    mask_segmentation_sagittal, mask_mean_sagittal, mask_mean_leo_thresholding_sagittal = sagittalSegmentation(image_path, row['Sagittal_Initial'], row['Sagittal_End'])
+    mask_segmentation_sagittal, mask_mean_sagittal, mask_mean_leo_thresholding_sagittal = sagittalSegmentation(image_path, row['Sagittal_Initial_Index'], row['Sagittal_End_Index'])
 
     # cv2.imshow('mask_segmentation_coronal', mask_segmentation_coronal)
     # cv2.imshow('mask_segmentation_axial', mask_segmentation_axial)
@@ -531,7 +543,60 @@ for folder_name in os.listdir(ROOT_PATH):
         mask = np.zeros_like(mask)
         cv2.drawContours(mask_mean_coronal_rgb, contours, -1, (0, 255, 0), 1)
 
-        cv2.imshow('mask coronal', mask_mean_coronal_rgb)
+        cv2.drawContours(mask, contours, -1, 255, -1)
+
+        original_contours, _ = cv2.findContours(original_mask_coronal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        area_original_mask = 0
+
+        larger_area = 0
+        index_larger_area_original_mask = 0
+        for i, countour in enumerate(original_contours):
+
+            area = cv2.contourArea(countour)
+
+            area_original_mask += area
+
+            if larger_area == 0:
+                larger_area = area
+                index_larger_area_original_mask = i
+            else:
+                if area > larger_area:
+                    larger_area = area
+                    index_larger_area_original_mask = i
+
+        mask_segmented_contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        area_mask = 0
+
+        larger_area = 0
+        index_larger_area_mask_segmented = 0
+        for i, countour in enumerate(mask_segmented_contours):
+            area = cv2.contourArea(countour)
+
+            area_mask += area
+
+            if larger_area == 0:
+                larger_area = area
+                index_larger_area_mask_segmented = i
+            else:
+                if area > larger_area:
+                    larger_area = area
+                    index_larger_area_mask_segmented = i
+
+        similarity = cv2.matchShapes(original_contours[index_larger_area_original_mask], mask_segmented_contours[index_larger_area_mask_segmented], cv2.CONTOURS_MATCH_I1, 0.0)
+
+        os.makedirs(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name), exist_ok=True)
+
+        cv2.imwrite(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name, f'{folder_name}_mask_drawned_coronal.png'), mask_mean_coronal_rgb)
+        cv2.imwrite(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name, f'{folder_name}_segmented_mask_coronal.png'), mask)
+        cv2.imwrite(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name, f'{folder_name}_original_mask_coronal.png'), original_mask_coronal)
+
+        dataframe.append([folder_name, 'Coronal', "True", similarity, area_original_mask, area_mask])
+
+        # cv2.imshow('mask coronal', mask_mean_coronal_rgb)
+    else:
+        dataframe.append([folder_name, 'Coronal', "False", 0, 0, 0])   
 
     if len(boxes_axial) > 0:
 
@@ -547,7 +612,60 @@ for folder_name in os.listdir(ROOT_PATH):
         mask = np.zeros_like(mask)
         cv2.drawContours(mask_mean_axial_rgb, contours, -1, (0, 255, 0), 1)
 
-        cv2.imshow('mask axial', mask_mean_axial_rgb)
+        cv2.drawContours(mask, contours, -1, 255, -1)
+
+        original_contours, _ = cv2.findContours(original_mask_axial, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        area_original_mask = 0
+
+        larger_area = 0
+        index_larger_area_original_mask = 0
+        for i, countour in enumerate(original_contours):
+
+            area = cv2.contourArea(countour)
+
+            area_original_mask += area
+
+            if larger_area == 0:
+                larger_area = area
+                index_larger_area_original_mask = i
+            else:
+                if area > larger_area:
+                    larger_area = area
+                    index_larger_area_original_mask = i
+
+        mask_segmented_contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        area_mask = 0
+
+        larger_area = 0
+        index_larger_area_mask_segmented = 0
+        for i, countour in enumerate(mask_segmented_contours):
+            area = cv2.contourArea(countour)
+
+            area_mask += area
+
+            if larger_area == 0:
+                larger_area = area
+                index_larger_area_mask_segmented = i
+            else:
+                if area > larger_area:
+                    larger_area = area
+                    index_larger_area_mask_segmented = i
+
+        similarity = cv2.matchShapes(original_contours[index_larger_area_original_mask], mask_segmented_contours[index_larger_area_mask_segmented], cv2.CONTOURS_MATCH_I1, 0.0)
+
+        os.makedirs(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name), exist_ok=True)
+
+        cv2.imwrite(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name, f'{folder_name}_mask_drawned_axial.png'), mask_mean_axial_rgb)
+        cv2.imwrite(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name, f'{folder_name}_segmented_mask_axial.png'), mask)
+        cv2.imwrite(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name, f'{folder_name}_original_mask_axial.png'), original_mask_axial)
+
+        dataframe.append([folder_name, 'Axial', "True", similarity, area_original_mask, area_mask])
+
+        # cv2.imshow('mask axial', mask_mean_axial_rgb)
+    else:
+        dataframe.append([folder_name, 'Axial', "False", 0, 0, 0])   
 
     if len(boxes_sagittal) > 0:
 
@@ -563,10 +681,67 @@ for folder_name in os.listdir(ROOT_PATH):
         mask = np.zeros_like(mask)
         cv2.drawContours(mask_mean_sagittal_rgb, contours, -1, (0, 255, 0), 1)
 
-        cv2.imshow('mask sagittal', mask_mean_sagittal_rgb)
+        cv2.drawContours(mask, contours, -1, 255, -1)
+
+        original_contours, _ = cv2.findContours(original_mask_sagittal, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        area_original_mask = 0
+
+        larger_area = 0
+        index_larger_area_original_mask = 0
+        for i, countour in enumerate(original_contours):
+
+            area = cv2.contourArea(countour)
+
+            area_original_mask += area
+
+            if larger_area == 0:
+                larger_area = area
+                index_larger_area_original_mask = i
+            else:
+                if area > larger_area:
+                    larger_area = area
+                    index_larger_area_original_mask = i
+
+        mask_segmented_contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        
+        area_mask = 0
+
+        larger_area = 0
+        index_larger_area_mask_segmented = 0
+        for i, countour in enumerate(mask_segmented_contours):
+            area = cv2.contourArea(countour)
+
+            area_mask += area
+
+            if larger_area == 0:
+                larger_area = area
+                index_larger_area_mask_segmented = i
+            else:
+                if area > larger_area:
+                    larger_area = area
+                    index_larger_area_mask_segmented = i
+
+        similarity = cv2.matchShapes(original_contours[index_larger_area_original_mask], mask_segmented_contours[index_larger_area_mask_segmented], cv2.CONTOURS_MATCH_I1, 0.0)
+
+        os.makedirs(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name), exist_ok=True)
+
+        cv2.imwrite(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name, f'{folder_name}_mask_drawned_sagittal.png'), mask_mean_sagittal_rgb)
+        cv2.imwrite(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name, f'{folder_name}_segmented_mask_sagittal.png'), mask)
+        cv2.imwrite(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name, f'{folder_name}_original_mask_sagittal.png'), original_mask_sagittal)
+
+        dataframe.append([folder_name, 'Sagittal', "True", similarity, area_original_mask, area_mask])
+
+        # cv2.imshow('mask sagittal', mask_mean_sagittal_rgb)
+    else:
+        dataframe.append([folder_name, 'Sagittal', "False", 0, 0, 0])   
     
 
-    cv2.waitKey(0)
+    # cv2.waitKey(0)
+
+dataframe = pd.DataFrame(dataframe, columns=['Image', 'Perspective', 'Segmented', 'Similarity', 'Area Original Mask', 'Area Mask'])
+
+dataframe.to_csv('results_segmentation.csv', index=False, sep=';')
 
 
         
