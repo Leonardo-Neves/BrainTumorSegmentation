@@ -547,7 +547,7 @@ for folder_name in os.listdir(ROOT_PATH):
         mask = np.zeros_like(mask)
         cv2.drawContours(mask_mean_axial_rgb, contours, -1, (0, 255, 0), 1)
 
-        cv2.imshow('mask coronal', mask_mean_axial_rgb)
+        cv2.imshow('mask axial', mask_mean_axial_rgb)
 
     if len(boxes_sagittal) > 0:
 
@@ -563,7 +563,7 @@ for folder_name in os.listdir(ROOT_PATH):
         mask = np.zeros_like(mask)
         cv2.drawContours(mask_mean_sagittal_rgb, contours, -1, (0, 255, 0), 1)
 
-        cv2.imshow('mask coronal', mask_mean_sagittal_rgb)
+        cv2.imshow('mask sagittal', mask_mean_sagittal_rgb)
     
 
     cv2.waitKey(0)

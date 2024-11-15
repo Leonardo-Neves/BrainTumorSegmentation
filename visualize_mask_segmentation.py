@@ -104,3 +104,18 @@ for folder_name in os.listdir(ROOT_PATH):
         cv2.imshow('mask', mask)
 
         cv2.waitKey(0)
+
+    mask = np.sum(masks, axis=0)
+    mask = np.where(mask > 0, 255, 0).astype(np.uint8)
+
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7))
+
+    mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, kernel)
+
+    contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    mask = np.zeros_like(mask)
+    cv2.drawContours(mask, contours, -1, 255, -1)
+
+    cv2.imshow('mask compressed', mask)
+
+    cv2.waitKey(0)
