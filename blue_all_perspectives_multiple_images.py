@@ -507,16 +507,63 @@ for folder_name in os.listdir(ROOT_PATH):
     mask_mean_axial_rgb = cv2.cvtColor(mask_mean_axial, cv2.COLOR_GRAY2RGB)
     mask_mean_sagittal_rgb = cv2.cvtColor(mask_mean_sagittal, cv2.COLOR_GRAY2RGB)
 
-    results = model([mask_mean_coronal_rgb, mask_mean_axial_rgb, mask_mean_sagittal_rgb], stream=True, imgsz=(640, 800))
+    results_coronal = model([mask_mean_coronal_rgb], stream=True, imgsz=(640, 800))
+    results_axial = model([mask_mean_axial_rgb], stream=True, imgsz=(640, 800))
+    results_sagittal = model([mask_mean_sagittal_rgb], stream=True, imgsz=(640, 800))
 
-    boxes = [result.obb.xywhr.cpu().numpy()[0] for result in results if len(result.obb.xywhr) > 0]
+    boxes_coronal = [result.obb.xywhr.cpu().numpy()[0] for result in results_coronal if len(result.obb.xywhr) > 0]
+    boxes_axial = [result.obb.xywhr.cpu().numpy()[0] for result in results_axial if len(result.obb.xywhr) > 0]
+    boxes_sagittal = [result.obb.xywhr.cpu().numpy()[0] for result in results_sagittal if len(result.obb.xywhr) > 0]
 
-   
-    if len(boxes) > 0:
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
 
-        mask = getMaskBasedOnBoundingBoxPosition(mask_segmentation_coronal, mask_mean_leo_thresholding_coronal, boxes[0])
+    if len(boxes_coronal) > 0:
 
-        cv2.imshow('mask', mask)
+        mask = getMaskBasedOnBoundingBoxPosition(mask_segmentation_coronal, mask_mean_leo_thresholding_coronal, boxes_coronal[0])
+
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        mask = np.zeros_like(mask)
+        cv2.drawContours(mask, contours, -1, 255, -1)
+
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        mask = np.zeros_like(mask)
+        cv2.drawContours(mask_mean_coronal_rgb, contours, -1, (0, 255, 0), 1)
+
+        cv2.imshow('mask coronal', mask_mean_coronal_rgb)
+
+    if len(boxes_axial) > 0:
+
+        mask = getMaskBasedOnBoundingBoxPosition(mask_segmentation_axial, mask_mean_leo_thresholding_axial, boxes_axial[0])
+
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        mask = np.zeros_like(mask)
+        cv2.drawContours(mask, contours, -1, 255, -1)
+
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        mask = np.zeros_like(mask)
+        cv2.drawContours(mask_mean_axial_rgb, contours, -1, (0, 255, 0), 1)
+
+        cv2.imshow('mask coronal', mask_mean_axial_rgb)
+
+    if len(boxes_sagittal) > 0:
+
+        mask = getMaskBasedOnBoundingBoxPosition(mask_segmentation_sagittal, mask_mean_leo_thresholding_sagittal, boxes_sagittal[0])
+
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        mask = np.zeros_like(mask)
+        cv2.drawContours(mask, contours, -1, 255, -1)
+
+        mask = cv2.morphologyEx(mask, cv2.MORPH_CLOSE, kernel)
+
+        contours, _ = cv2.findContours(mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+        mask = np.zeros_like(mask)
+        cv2.drawContours(mask_mean_sagittal_rgb, contours, -1, (0, 255, 0), 1)
+
+        cv2.imshow('mask coronal', mask_mean_sagittal_rgb)
     
 
     cv2.waitKey(0)
