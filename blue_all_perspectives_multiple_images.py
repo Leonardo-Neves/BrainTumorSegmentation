@@ -524,7 +524,7 @@ for folder_name in os.listdir(ROOT_PATH):
     boxes_axial = [result.obb.xywhr.cpu().numpy()[0] for result in results_axial if len(result.obb.xywhr) > 0]
     boxes_sagittal = [result.obb.xywhr.cpu().numpy()[0] for result in results_sagittal if len(result.obb.xywhr) > 0]
 
-    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5))
+    kernel = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (19, 19))
 
     if len(boxes_coronal) > 0:
 
