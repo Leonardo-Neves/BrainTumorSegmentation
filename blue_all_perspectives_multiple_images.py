@@ -585,6 +585,9 @@ for folder_name in os.listdir(ROOT_PATH):
 
         difference_between_masks = original_mask_coronal - mask
 
+        print('max: ', np.max(difference_between_masks))
+        print('min: ', np.min(difference_between_masks))
+
         percentage = (np.sum(difference_between_masks == 255) / np.sum(original_mask_coronal == 255)) * 100
 
         os.makedirs(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name), exist_ok=True)
@@ -656,9 +659,9 @@ for folder_name in os.listdir(ROOT_PATH):
 
         similarity = cv2.matchShapes(original_contours[index_larger_area_original_mask], mask_segmented_contours[index_larger_area_mask_segmented], cv2.CONTOURS_MATCH_I1, 0.0)
 
-        difference_between_masks = original_mask_coronal - mask
+        difference_between_masks = original_mask_axial - mask
 
-        percentage = (np.sum(difference_between_masks == 255) / np.sum(original_mask_coronal == 255)) * 100
+        percentage = (np.sum(difference_between_masks == 255) / np.sum(original_mask_axial == 255)) * 100
 
         os.makedirs(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name), exist_ok=True)
 
@@ -729,9 +732,9 @@ for folder_name in os.listdir(ROOT_PATH):
 
         similarity = cv2.matchShapes(original_contours[index_larger_area_original_mask], mask_segmented_contours[index_larger_area_mask_segmented], cv2.CONTOURS_MATCH_I1, 0.0)
 
-        difference_between_masks = original_mask_coronal - mask
+        difference_between_masks = original_mask_sagittal - mask
 
-        percentage = (np.sum(difference_between_masks == 255) / np.sum(original_mask_coronal == 255)) * 100
+        percentage = (np.sum(difference_between_masks == 255) / np.sum(original_mask_sagittal == 255)) * 100
 
         os.makedirs(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name), exist_ok=True)
 
@@ -748,7 +751,7 @@ for folder_name in os.listdir(ROOT_PATH):
 
     cv2.waitKey(0)
 
-dataframe = pd.DataFrame(dataframe, columns=['Image', 'Perspective', 'Segmented', 'Similarity', 'Area Original Mask', 'Area Mask'])
+dataframe = pd.DataFrame(dataframe, columns=['Image', 'Perspective', 'Segmented', 'Similarity', 'Area Original Mask', 'Area Mask', 'Difference Between Masks', 'Percentage Over Original Mask Total Area'])
 
 dataframe.to_csv('results_segmentation.csv', index=False, sep=';')
 
