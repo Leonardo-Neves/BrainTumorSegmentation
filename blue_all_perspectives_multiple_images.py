@@ -583,17 +583,21 @@ for folder_name in os.listdir(ROOT_PATH):
 
         similarity = cv2.matchShapes(original_contours[index_larger_area_original_mask], mask_segmented_contours[index_larger_area_mask_segmented], cv2.CONTOURS_MATCH_I1, 0.0)
 
+        difference_between_masks = original_mask_coronal - mask
+
+        percentage = (np.sum(difference_between_masks == 255) / np.sum(original_mask_coronal == 255)) * 100
+
         os.makedirs(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name), exist_ok=True)
 
         cv2.imwrite(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name, f'{folder_name}_mask_drawned_coronal.png'), mask_mean_coronal_rgb)
         cv2.imwrite(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name, f'{folder_name}_segmented_mask_coronal.png'), mask)
         cv2.imwrite(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name, f'{folder_name}_original_mask_coronal.png'), original_mask_coronal)
 
-        dataframe.append([folder_name, 'Coronal', "True", similarity, area_original_mask, area_mask])
+        dataframe.append([folder_name, 'Coronal', "True", f'{similarity}'.replace('.', ','), area_original_mask, area_mask, f'{np.sum(difference_between_masks == 255)}'.replace('.', ','), f'{percentage}'.replace('.', ',')])
 
         # cv2.imshow('mask coronal', mask_mean_coronal_rgb)
     else:
-        dataframe.append([folder_name, 'Coronal', "False", 0, 0, 0])   
+        dataframe.append([folder_name, 'Coronal', "False", 0, 0, 0, 0, 0])   
 
     if len(boxes_axial) > 0:
 
@@ -652,17 +656,21 @@ for folder_name in os.listdir(ROOT_PATH):
 
         similarity = cv2.matchShapes(original_contours[index_larger_area_original_mask], mask_segmented_contours[index_larger_area_mask_segmented], cv2.CONTOURS_MATCH_I1, 0.0)
 
+        difference_between_masks = original_mask_coronal - mask
+
+        percentage = (np.sum(difference_between_masks == 255) / np.sum(original_mask_coronal == 255)) * 100
+
         os.makedirs(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name), exist_ok=True)
 
         cv2.imwrite(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name, f'{folder_name}_mask_drawned_axial.png'), mask_mean_axial_rgb)
         cv2.imwrite(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name, f'{folder_name}_segmented_mask_axial.png'), mask)
         cv2.imwrite(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name, f'{folder_name}_original_mask_axial.png'), original_mask_axial)
 
-        dataframe.append([folder_name, 'Axial', "True", similarity, area_original_mask, area_mask])
+        dataframe.append([folder_name, 'Axial', "True", f'{similarity}'.replace('.', ','), area_original_mask, area_mask, f'{np.sum(difference_between_masks == 255)}'.replace('.', ','), f'{percentage}'.replace('.', ',')])
 
         # cv2.imshow('mask axial', mask_mean_axial_rgb)
     else:
-        dataframe.append([folder_name, 'Axial', "False", 0, 0, 0])   
+        dataframe.append([folder_name, 'Axial', "False", 0, 0, 0, 0, 0])   
 
     if len(boxes_sagittal) > 0:
 
@@ -721,20 +729,24 @@ for folder_name in os.listdir(ROOT_PATH):
 
         similarity = cv2.matchShapes(original_contours[index_larger_area_original_mask], mask_segmented_contours[index_larger_area_mask_segmented], cv2.CONTOURS_MATCH_I1, 0.0)
 
+        difference_between_masks = original_mask_coronal - mask
+
+        percentage = (np.sum(difference_between_masks == 255) / np.sum(original_mask_coronal == 255)) * 100
+
         os.makedirs(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name), exist_ok=True)
 
         cv2.imwrite(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name, f'{folder_name}_mask_drawned_sagittal.png'), mask_mean_sagittal_rgb)
         cv2.imwrite(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name, f'{folder_name}_segmented_mask_sagittal.png'), mask)
         cv2.imwrite(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name, f'{folder_name}_original_mask_sagittal.png'), original_mask_sagittal)
 
-        dataframe.append([folder_name, 'Sagittal', "True", similarity, area_original_mask, area_mask])
+        dataframe.append([folder_name, 'Sagittal', "True", f'{similarity}'.replace('.', ','), area_original_mask, area_mask, f'{np.sum(difference_between_masks == 255)}'.replace('.', ','), f'{percentage}'.replace('.', ',')])
 
         # cv2.imshow('mask sagittal', mask_mean_sagittal_rgb)
     else:
-        dataframe.append([folder_name, 'Sagittal', "False", 0, 0, 0])   
+        dataframe.append([folder_name, 'Sagittal', "False", 0, 0, 0, 0, 0])   
     
 
-    # cv2.waitKey(0)
+    cv2.waitKey(0)
 
 dataframe = pd.DataFrame(dataframe, columns=['Image', 'Perspective', 'Segmented', 'Similarity', 'Area Original Mask', 'Area Mask'])
 
