@@ -585,9 +585,6 @@ for folder_name in os.listdir(ROOT_PATH):
 
         difference_between_masks = original_mask_coronal - mask
 
-        print('max: ', np.max(difference_between_masks))
-        print('min: ', np.min(difference_between_masks))
-
         percentage = (np.sum(difference_between_masks == 255) / np.sum(original_mask_coronal == 255)) * 100
 
         os.makedirs(os.path.join(OUTPUT_SEGMENTATION_PATH, folder_name), exist_ok=True)
